@@ -1,0 +1,76 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id         String    @id @default(auto()) @map("_id") @db.ObjectId
+  email      String    @unique
+  phone      String?
+  password   String
+  role       Role
+  status     Status
+  lastLogin  DateTime?
+  profile    Profile?
+
+  @@index([role])
+  @@index([phone])
+}
+
+model Profile {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String   @db.ObjectId @unique
+  user         User     @relation(fields: [userId], references: [id])
+  name         String
+  dob          DateTime?
+  gender       String?
+  address      Address?
+  geo          Geo?
+  avatarFileId String?
+  @@index([address.state, address.district])
+}
+model doctor {
+  id  String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId String   @db.ObjectId @unique
+  regNo String
+  specialties String[]
+  clinicName String?
+  yearOfExperience Int?
+  languase String[]
+  about String?
+  verification Verification?
+}
+enum Role {
+  patient
+  doctor
+  admin
+}
+enum Status {
+  active
+  pending
+  blocked
+}
+type Verification {
+  status    Status
+  documents String[]
+}
+type Address {
+  line      String?
+  district  String?
+  state     String?
+  pincode   String?
+}
+
+type Geo {
+  lat Float?
+  lng Float?
+}
