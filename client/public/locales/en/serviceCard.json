@@ -1,0 +1,25 @@
+{
+    "title": {
+        "line1": "our",
+        "line2": "services",
+        "line3": "Comprehensive healthcare solutions designed for rural communities"
+    },
+    "services": {
+        "videoConsultations": {
+            "title": "Video Consultations",
+            "description": "Connect with doctors through secure video consultations from the comfort of your home."
+        },
+        "appointmentBooking": {
+            "title": "Appointment Booking",
+            "description": "Schedule appointments with specialists based on your convenience and requirements."
+        },
+        "healthTrack": {
+            "title": "Health Track",
+            "description": "Keep track of your medical history."
+        },
+        "healthQueries": {
+            "title": "Health Queries",
+            "description": "Ask health-related questions and get answers from qualified medical professionals."
+        }
+    }
+}

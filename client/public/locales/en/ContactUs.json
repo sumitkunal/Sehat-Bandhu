@@ -1,0 +1,25 @@
+{
+    "title" : {
+        "line1" : "Get in",
+        "line2" : "Touch",
+        "line3" : "With Us",
+        "line4" : "We're here to help and answer any questions you might have"
+    },
+    "contact" :{
+        "line1" : "Contact Information",
+        "line2" : "Our Location",
+        "line3" : "Sehat Bandhu\n SLIET Longowal\n Sangrur, Punjab 148106",
+        "line4" : "Phone no",
+        "line5" : "Email",
+        "line6" : "Working hours",
+        "line7" : "Mon–Fri: 9AM–8PM\nSat: 9AM–5PM\nSun: Closed"
+    },
+    "message" : {
+        "line1" : "Send Us a Message",
+        "line2" : "Full Name",
+        "line3" : "Email Address",
+        "line4" : "Phone no",
+        "line5" : "Message",
+        "line6" : "Send Message"
+    }
+}

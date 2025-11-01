@@ -1,0 +1,38 @@
+{
+    "section": {
+        "ruralCommunities": {
+            "title_1": "Healthcare Reimagined for",
+            "title_2": "Rural Communities",
+            "description": "Connect with expert doctors through telemedicine, book appointments, and access quality healthcare from anywhere."
+        },
+        "actions": {
+            "bookAppointment": "Book Appointment",
+            "findDoctors": "Find Doctors",
+            "telemedicine": "Telemedicine"
+        },
+        "features": {
+            "telemedicine": {
+                "title": "Telemedicine",
+                "description": "Access healthcare services remotely through our telemedicine platform."
+            },
+            "virtualConsultations": {
+                "title": "Virtual Consultations",
+                "description": "Connect with doctors through video consultations from the comfort of your home."
+            },
+            "expertDoctors": {
+                "title": "Expert Doctors",
+                "description": "Access a network of experienced doctors specializing in various fields."
+            },
+            "healthQueries": {
+                "title": "Health Queries",
+                "description": "Ask health-related questions and get answers from qualified professionals."
+            }
+        },
+        "stats" : {
+            "doctors" : "Doctors",
+            "patients" : "Patients Served", 
+            "ruralAreas" : "Rural Areas",
+            "query" : "Queries answered"
+        }
+    }
+}
