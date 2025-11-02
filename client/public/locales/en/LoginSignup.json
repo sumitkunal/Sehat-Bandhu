@@ -1,0 +1,32 @@
+{
+  "loginTitle": "Login to your account",
+  "signupTitle": "Create a new account",
+  "doctorSignupTitle": "Doctor Signup",
+  "email": "Email",
+  "password": "Password",
+  "confirmPassword": "Confirm Password",
+  "fullName": "Full name",
+  "specialization": "Specialization",
+  "registrationNo": "Registration No.",
+  "clinicAddress": "Clinic address",
+  "contact": "Contact number",
+  "createAccount": "Create account",
+  "login": "Login",
+  "areYouDoctor": "Are you a doctor?",
+  "noAccount": "Don't have an account?",
+  "alreadyHave": "Already have an account?",
+  "forgotPassword": "Forgot?",
+  "license": "Upload medical license",
+  "loading": "Please wait...",
+  "validation": {
+    "required": "This field is required",
+    "invalidEmail": "Please enter a valid email",
+    "minPassword": "Password must be at least 6 characters",
+    "passwordMismatch": "Passwords do not match"
+    
+  },
+  "auth": {
+    "invalidCredentials": "Invalid email or password",
+    "emailTaken": "Email already in use"
+  }
+}

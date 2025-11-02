@@ -1,0 +1,31 @@
+{
+  "loginTitle": "अपना खाता लॉगिन करें",
+  "signupTitle": "नया खाता बनाएं",
+  "doctorSignupTitle": "डॉक्टर रजिस्ट्रेशन",
+  "email": "ईमेल",
+  "password": "पासवर्ड",
+  "confirmPassword": "पासवर्ड सत्यापित करें",
+  "fullName": "पूरा नाम",
+  "specialization": "विशेषज्ञता",
+  "registrationNo": "पंजीकरण संख्या",
+  "clinicAddress": "क्लिनिक पता",
+  "contact": "संपर्क नंबर",
+  "createAccount": "खाता बनाएँ",
+  "login": "लॉगिन",
+  "areYouDoctor": "क्या आप एक डॉक्टर हैं?",
+  "noAccount": "खाता नहीं है?",
+  "alreadyHave": "पहले से खाता है?",
+  "forgotPassword": "भूल गए?",
+  "license": "मेडिकल लाइसेंस अपलोड करें",
+  "loading": "कृपया प्रतीक्षा करें...",
+  "validation": {
+    "required": "यह फ़ील्ड आवश्यक है",
+    "invalidEmail": "कृपया मान्य ईमेल दर्ज करें",
+    "minPassword": "पासवर्ड कम से कम 6 वर्ण होना चाहिए",
+    "passwordMismatch": "पासवर्ड मेल नहीं खाते"
+  },
+  "auth": {
+    "invalidCredentials": "अमान्य ईमेल या पासवर्ड",
+    "emailTaken": "ईमेल पहले से उपयोग में है"
+  }
+}

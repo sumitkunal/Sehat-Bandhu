@@ -1,0 +1,22 @@
+{
+  "findDoctors": "Find Doctors",
+  "searchDoctor": "Search doctor...",
+  "specialization": "Specialization",
+  "location": "Location",
+  "education": "Education",
+  "yearsExperience": "years of experience",
+  "bookAppointment": "Book Appointment",
+  "noDoctorsFound": "No doctors found",
+  "Cardiologist": "Cardiologist",
+  "Dermatologist": "Dermatologist",
+  "Pediatrician": "Pediatrician",
+  "OrthopedicSurgeon": "Orthopedic Surgeon",
+  "Delhi": "Delhi",
+  "Mumbai": "Mumbai",
+  "Bangalore": "Bangalore",
+  "Chennai": "Chennai",
+  "MBBS": "MBBS",
+  "MD": "MD",
+  "MS": "MS",
+  "DCH": "DCH"
+}

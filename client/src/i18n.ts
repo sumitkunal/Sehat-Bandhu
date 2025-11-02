@@ -8,10 +8,10 @@ i18n
     .use(LanguageDetector)
     .use(initReactI18next)
     .init({
-        lng : "en",
+        lng: "en",
         fallbackLng: "en",
         debug: true,
-        ns: ["hero", "serviceCard", "newsSlider"], // all namespaces you’ll use
+        ns: ["hero", "serviceCard", "newsSlider", "Navbar", "LoginSignup"], // all namespaces you’ll use
         defaultNS: "common",
         interpolation: {
             escapeValue: false,

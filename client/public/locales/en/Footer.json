@@ -1,0 +1,18 @@
+{
+  "brand": "Sehat Bandhu",
+  "tagline": "Connecting rural communities with quality healthcare through telemedicine.",
+  "quickLinks": "Quick Links",
+  "menu": ["Home", "About Us", "Services", "Find Doctors", " Contact Us"],
+  "services": "Our Services",
+  "serviceList": ["Teleconsultation", "Health Checkups", "Pharmacy", "Diagnostics", "Health Awareness"],
+  "contact": "Contact Us",
+  "address": "Sumit, Arya \nSangrur, Punjab 148106",
+  "phone": "+91 98765 43210",
+  "email": "sumitkunal103@gmail.com",
+  "rights": "All rights reserved.",
+  "privacy": "Privacy Policy",
+  "terms": "Terms of Use",
+  "sitemap": "Sitemap",
+  "madeWith": "Made with",
+  "forRural": "for Rural India"
+}

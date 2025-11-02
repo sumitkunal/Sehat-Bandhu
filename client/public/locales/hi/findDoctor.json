@@ -1,0 +1,22 @@
+{
+  "findDoctors": "डॉक्टर खोजें",
+  "searchDoctor": "डॉक्टर खोजें...",
+  "specialization": "विशेषज्ञता",
+  "location": "स्थान",
+  "education": "शिक्षा",
+  "yearsExperience": "वर्षों का अनुभव",
+  "bookAppointment": "अपॉइंटमेंट बुक करें",
+  "noDoctorsFound": "कोई डॉक्टर नहीं मिला",
+  "Cardiologist": "हृदय रोग विशेषज्ञ",
+  "Dermatologist": "त्वचा रोग विशेषज्ञ",
+  "Pediatrician": "बाल रोग विशेषज्ञ",
+  "OrthopedicSurgeon": "अस्थि शल्य चिकित्सक",
+  "Delhi": "दिल्ली",
+  "Mumbai": "मुंबई",
+  "Bangalore": "बेंगलुरु",
+  "Chennai": "चेन्नई",
+  "MBBS": "एमबीबीएस",
+  "MD": "एमडी",
+  "MS": "एमएस",
+  "DCH": "डीसीएच"
+}

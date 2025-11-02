@@ -1,0 +1,13 @@
+{
+  "home": "Home",
+  "appointments": "Appointments",
+  "medicines": "Medicines",
+  "messages": "Messages",
+  "findDoctors": "Find Doctors",
+  "videoCall": "Video Call",
+  "profile": "Profile",
+  "logout": "Logout",
+  "login": "Login",
+  "signup": "Sign Up",
+  "dashboard": "Dashboard"
+}
