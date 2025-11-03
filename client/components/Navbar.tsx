@@ -1,20 +1,17 @@
-import React, { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
-import {
-  Menu,
-  X,
-  Home,
-  Calendar,
-  Search,
-  Video,
-} from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Menu, X, Home, Calendar, Search, Video, User } from "lucide-react";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 
 const Navbar: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [showLogout, setShowLogout] = useState(false);
   const { i18n, t } = useTranslation("Navbar");
   const location = useLocation();
+  const navigate = useNavigate();
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const toggleMenu = () => setIsOpen(!isOpen);
   const toggleLanguage = () => {
@@ -28,6 +25,31 @@ const Navbar: React.FC = () => {
     { name: t("findDoctors"), path: "/find-doctor", icon: <Search className="w-5 h-5" /> },
     { name: t("videoCall"), path: "/video-consultation", icon: <Video className="w-5 h-5" /> },
   ];
+
+  // ✅ Check JWT token on mount
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    setIsLoggedIn(!!token);
+  }, []);
+
+  // ✅ Close logout dropdown when clicked outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowLogout(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // ✅ Logout handler
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    setIsLoggedIn(false);
+    setShowLogout(false);
+    navigate("/login");
+  };
 
   return (
     <>
@@ -54,8 +76,8 @@ const Navbar: React.FC = () => {
                   key={link.path}
                   to={link.path}
                   className={`px-4 py-2 rounded-md text-sm font-medium flex items-center space-x-2 transition-all duration-200 ${location.pathname === link.path
-                    ? "border border-emerald-500 text-emerald-400 bg-gray-800"
-                    : "text-gray-300 hover:text-emerald-400 hover:bg-gray-800"
+                      ? "border border-emerald-500 text-emerald-400 bg-gray-800"
+                      : "text-gray-300 hover:text-emerald-400 hover:bg-gray-800"
                     }`}
                 >
                   {link.icon}
@@ -72,21 +94,48 @@ const Navbar: React.FC = () => {
                 {i18n.language === "en" ? "हिंदी" : "English"}
               </button>
 
-              {/* Auth Buttons */}
-              <div className="ml-4 flex items-center space-x-2">
-                <Link
-                  to="/login"
-                  className="px-4 py-2 rounded-md text-sm font-medium border border-emerald-500 text-emerald-400 hover:bg-emerald-600/20"
-                >
-                  {t("Login")}
-                </Link>
-                <Link
-                  to="/signup"
-                  className="px-4 py-2 rounded-md text-sm font-medium bg-gradient-to-r from-emerald-600 via-green-500 to-teal-400 text-black font-semibold hover:opacity-90"
-                >
-                  {t("Sign Up")}
-                </Link>
-              </div>
+              {/* Auth Section */}
+              {!isLoggedIn ? (
+                <div className="ml-4 flex items-center space-x-2">
+                  <Link
+                    to="/login"
+                    className="px-4 py-2 rounded-md text-sm font-medium border border-emerald-500 text-emerald-400 hover:bg-emerald-600/20"
+                  >
+                    {t("Login")}
+                  </Link>
+                  <Link
+                    to="/signup"
+                    className="px-4 py-2 rounded-md text-sm font-medium bg-gradient-to-r from-emerald-600 via-green-500 to-teal-400 text-black font-semibold hover:opacity-90"
+                  >
+                    {t("Sign Up")}
+                  </Link>
+                </div>
+              ) : (
+                <div ref={dropdownRef} className="relative ml-4">
+                  <button
+                    onClick={() => setShowLogout(!showLogout)}
+                    className="p-2 rounded-full border border-emerald-500 text-emerald-400 hover:bg-emerald-600/20"
+                    title="User Menu"
+                  >
+                    <User className="w-5 h-5" />
+                  </button>
+                  {showLogout && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="absolute right-0 mt-2 w-32 bg-gray-900 border border-gray-700 rounded-lg shadow-lg py-2"
+                    >
+                      <button
+                        onClick={handleLogout}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-emerald-400"
+                      >
+                        Logout
+                      </button>
+                    </motion.div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Mobile Menu Button */}
@@ -110,14 +159,42 @@ const Navbar: React.FC = () => {
                 to={link.path}
                 onClick={() => setIsOpen(false)}
                 className={`block px-4 py-2 text-base font-medium flex items-center space-x-2 ${location.pathname === link.path
-                  ? "bg-gray-800 border-l-4 border-emerald-500 text-emerald-400"
-                  : "text-gray-300 hover:bg-gray-800 hover:text-emerald-400"
+                    ? "bg-gray-800 border-l-4 border-emerald-500 text-emerald-400"
+                    : "text-gray-300 hover:bg-gray-800 hover:text-emerald-400"
                   }`}
               >
                 {link.icon}
                 <span>{link.name}</span>
               </Link>
             ))}
+
+            {/* Mobile Auth or Logout */}
+            {!isLoggedIn ? (
+              <>
+                <Link
+                  to="/login"
+                  onClick={() => setIsOpen(false)}
+                  className="block px-4 py-2 text-base text-gray-300 hover:bg-gray-800 hover:text-emerald-400"
+                >
+                  Login
+                </Link>
+                <Link
+                  to="/signup"
+                  onClick={() => setIsOpen(false)}
+                  className="block px-4 py-2 text-base text-gray-300 hover:bg-gray-800 hover:text-emerald-400"
+                >
+                  Sign Up
+                </Link>
+              </>
+            ) : (
+              <button
+                onClick={handleLogout}
+                className="block w-full text-left px-4 py-2 text-base text-gray-300 hover:bg-gray-800 hover:text-emerald-400"
+              >
+                Logout
+              </button>
+            )}
+
             <button
               onClick={toggleLanguage}
               className="w-full flex items-center justify-center py-2 border-t border-gray-700 hover:bg-gray-800 text-white"

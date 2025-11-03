@@ -33,8 +33,8 @@ const NewsSlider: React.FC = () => {
       image_url:
         'https://images.unsplash.com/photo-1584118624012-df056829fbd0?auto=format&fit=crop&w=1000&q=80',
       created_at: new Date().toISOString(),
-      source: 'Health Ministry',
-      url: '#',
+      source: 'Max Healthcare',
+      url: 'https://www.maxhealthcare.in/blogs/jn-1-covid-variant-symptoms',
     },
     {
       id: '2',
@@ -44,8 +44,8 @@ const NewsSlider: React.FC = () => {
       image_url:
         'https://images.unsplash.com/photo-1527613426441-4da17471b66d?auto=format&fit=crop&w=1000&q=80',
       created_at: new Date().toISOString(),
-      source: 'National Health Portal',
-      url: '#',
+      source: 'WHO',
+      url: 'https://www.who.int/news-room/fact-sheets/detail/dengue-and-severe-dengue',
     },
     {
       id: '3',
@@ -56,7 +56,7 @@ const NewsSlider: React.FC = () => {
         'https://images.unsplash.com/photo-1601004890684-d8cbf643f5f2?auto=format&fit=crop&w=1000&q=80',
       created_at: new Date().toISOString(),
       source: 'Ayush Ministry',
-      url: '#',
+      url: 'https://arthayurvedaworld.com/blogs/news/breathe-easy-ayurvedic-approaches-to-seasonal-allergies?srsltid=AfmBOoo1pvYvpAlcMTqAajjeieN8_zMM3yn2tKZ1_v9LQQQAQbsEmjST',
     },
   ];
 
@@ -73,7 +73,7 @@ const NewsSlider: React.FC = () => {
             className="absolute rounded-full"
             style={{
               background:
-                'radial-gradient(circle, #05966940, #10B98140, #14B8A640)', // 🌿 Emerald → Green → Teal (hex: #059669, #10B981, #14B8A6)
+                'radial-gradient(circle, #05966940, #10B98140, #14B8A640)', //  Emerald → Green → Teal (hex: #059669, #10B981, #14B8A6)
               width: `${Math.random() * 400 + 250}px`,
               height: `${Math.random() * 400 + 250}px`,
               filter: 'blur(100px)',

@@ -9,13 +9,13 @@ const Login: React.FC = () => {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [errors, setErrors] = useState<{ email?: string; password?: string; general?: string }>({});
   const [loading, setLoading] = useState(false);
 
   const validate = () => {
     const e: typeof errors = {};
     if (!email) e.email = t("validation.required");
-    if (email && !/^\S+@\S+\.\S+$/.test(email)) e.email = t("validation.invalidEmail");
+    else if (!/^\S+@\S+\.\S+$/.test(email)) e.email = t("validation.invalidEmail");
     if (!password) e.password = t("validation.required");
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -27,11 +27,27 @@ const Login: React.FC = () => {
     setLoading(true);
 
     try {
-      // >>> DATABASE / AUTH: Insert login call here
-      await new Promise((r) => setTimeout(r, 700)); // demo delay
-      navigate("/"); // redirect after successful login
-    } catch (err) {
-      setErrors({ ...errors, password: t("auth.invalidCredentials") });
+      const res = await fetch("http://localhost:3000/auth/signin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Login failed");
+      }
+
+      const data = await res.json();
+      console.log("Login successful:", data);
+
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("isLoggedIn", "true");
+
+      navigate("/appointments");
+    } catch (err: any) {
+      console.error("Login Error:", err);
+      setErrors({ general: err.message || t("auth.invalidCredentials") });
     } finally {
       setLoading(false);
     }
@@ -39,7 +55,7 @@ const Login: React.FC = () => {
 
   return (
     <div className="relative min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black overflow-hidden flex items-center justify-center px-4">
-      {/* Animated background elements */}
+      {/* Animated background */}
       <div className="absolute inset-0 overflow-hidden">
         {[...Array(20)].map((_, i) => (
           <motion.div
@@ -81,7 +97,7 @@ const Login: React.FC = () => {
         ))}
       </div>
 
-      {/* Login Card */}
+      {/* Login card */}
       <motion.div
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
@@ -116,6 +132,10 @@ const Login: React.FC = () => {
             />
             {errors.password && <p className="text-xs text-red-400 mt-1">{errors.password}</p>}
           </div>
+
+          {errors.general && (
+            <p className="text-sm text-red-400 text-center">{errors.general}</p>
+          )}
 
           <button
             type="submit"

@@ -72,7 +72,7 @@ const Hero: React.FC = () => {
               {t("section.actions.bookAppointment")}
             </Link>
             <Link
-              to="/doctors"
+              to="/find-doctor"
               className="px-8 py-3 border border-white text-base font-medium rounded-md text-white hover:bg-white/10 md:py-4 md:text-lg md:px-10 transform transition hover:scale-105"
             >
               {t("section.actions.findDoctors")}
