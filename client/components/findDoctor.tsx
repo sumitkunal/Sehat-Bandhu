@@ -1,183 +1,198 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
+
+const backendUrl = (import.meta as any)?.env?.VITE_BACKEND_URL || "http://localhost:3000";
 
 interface Doctor {
-  id: number;
+  id: string;
   name: string;
   specialization: string;
   location: string;
+  state: string;
   education: string;
   experience: number;
   image: string;
 }
 
-const FindDoctor: React.FC = () => {
-  const { t } = useTranslation("findDoctor"); 
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filter, setFilter] = useState({
-    specialization: "",
-    location: "",
-    education: "",
-  });
+interface Slot {
+  id: string;
+  date: string; // ISO
+  slot: string; // "10:00 AM - 10:30 AM"
+}
 
-  const doctors: Doctor[] = [
-    {
-      id: 1,
-      name: "Dr. Amandeep Aggarwal",
-      specialization: "General Physician",
-      location: "Sangrur",
-      education: "MBBS",
-      experience: 32,
-      image: "https://assets.lybrate.com/f_auto,c_limit,w_384,q_auto/img/documents/doctor/dp/729e93c1d6618f007dc3ca47b4085a06/Family-Medicine-AmandeepAggarwal-Sangrur-b1d3c5",
-    },
-    {
-      id: 2,
-      name: "Dr. Lipy Gupta ",
-      specialization: "Dermatologist",
-      location: "Delhi",
-      education: "MBBS, MD (Dermatology)",
-      experience: 15,
-      image: "https://drlipygupta.com/wp-content/uploads/2019/05/IMG_4419-684x1024.jpg",
-    },
-    {
-      id: 3,
-      name: "DR. ANAND SUDE",
-      specialization: "Pediatrician",
-      location: "Mumbai",
-      education: "MBBS, MD (Pediatrics)",
-      experience: 12,
-      image: "https://mangalprabhu.com/wp-content/uploads/2020/04/Dr.-Anand-Sude.jpg",
-    },
-    {
-      id: 4,
-      name: "Dr. Soham Mandal",
-      specialization: "Orthopedic Surgeon",
-      location: "Kolkata",
-      education: "MBBS, MS (Orthopedics)",
-      experience: 15,
-      image: "https://ortho360degree.com/wp-content/uploads/2024/08/Doctors-in-Kolkata.png",
-    },
-    {
-      id: 5,
-      name: "Dr. Aditi Sharma",
-      specialization: "Cardiologist",
-      location: "Delhi",
-      education: "MBBS, MD (Cardiology)",
-      experience: 10,
-      image: "https://randomuser.me/api/portraits/women/44.jpg",
-    },
-        {
-      id: 6,
-      name: "Dr. Rajesh Kumar",
-      specialization: "Dermatologist",
-      location: "Mumbai",
-      education: "MBBS, MD (Dermatology)",
-      experience: 8,
-      image: "https://randomuser.me/api/portraits/men/41.jpg",
-    },
-    {
-      id: 7,
-      name: "Dr. Priya Nair",
-      specialization: "Pediatrician",
-      location: "Bangalore",
-      education: "MBBS, DCH, MD (Pediatrics)",
-      experience: 12,
-      image: "https://randomuser.me/api/portraits/women/47.jpg",
-    },
-    {
-      id: 8,
-      name: "Dr. Arjun Mehta",
-      specialization: "Orthopedic Surgeon",
-      location: "Chennai",
-      education: "MBBS, MS (Orthopedics)",
-      experience: 15,
-      image: "https://randomuser.me/api/portraits/men/45.jpg",
-    },
-  ];
+const FindDoctor: React.FC = () => {
+  const { t } = useTranslation("findDoctor");
+  const navigate = useNavigate();
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filter, setFilter] = useState({ specialization: "", location: "", education: "" });
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Booking modal state
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
+  const [slots, setSlots] = useState<Slot[]>([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
+
+  // patient form fields
+  const [allergiesInput, setAllergiesInput] = useState("");
+  const [chronicInput, setChronicInput] = useState("");
+  const [bloodGroup, setBloodGroup] = useState("");
+  const [bookingLoading, setBookingLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [age, setAge] = useState("");
+  const [gender, setGender] = useState("");
+  const [symptoms, setSymptoms] = useState("");
+
+  const [temperature, setTemperature] = useState("");
+  const [pulse, setPulse] = useState("");
+  const [bloodPressure, setBloodPressure] = useState("");
+  const [breathingRate, setBreathingRate] = useState("");
+
+  // Load Doctors
+  useEffect(() => {
+    const fetchDoctors = async () => {
+      try {
+        const res = await fetch(`${backendUrl}/getdoc`);
+        const data = await res.json();
+
+        const updatedData = data.map((doc: Doctor) => ({
+          ...doc,
+          image: doc.image && doc.image.startsWith("data:") ? doc.image : "https://via.placeholder.com/150",
+        }));
+
+        setDoctors(updatedData);
+      } catch (err) {
+        console.error("Error fetching doctors:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDoctors();
+  }, []);
 
   const filteredDoctors = doctors.filter(
     (doctor) =>
       doctor.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
-      (filter.specialization
-        ? doctor.specialization === filter.specialization
-        : true) &&
+      (filter.specialization ? doctor.specialization === filter.specialization : true) &&
       (filter.location ? doctor.location === filter.location : true) &&
       (filter.education ? doctor.education.includes(filter.education) : true)
   );
 
+  // open booking modal -> check auth
+  const onBookClick = async (doctor: Doctor) => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      // not logged in
+      navigate("/login");
+      return;
+    }
+
+    // reset modal state
+    setSelectedDoctor(doctor);
+    setSelectedSlotId(null);
+    setAllergiesInput("");
+    setChronicInput("");
+    setBloodGroup("");
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    setModalOpen(true);
+
+    // fetch available slots
+    setSlotsLoading(true);
+    try {
+      const res = await axios.get(`${backendUrl}/doctor/${doctor.id}/slots`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      // expecting { slots: Slot[] }
+      setSlots(res.data?.slots || []);
+    } catch (err) {
+      console.error("Failed to fetch slots", err);
+      setErrorMsg("Failed to load available slots. Try again later.");
+    } finally {
+      setSlotsLoading(false);
+    }
+  };
+
+  const validateBooking = () => {
+    if (!age || Number(age) <= 0) return setErrorMsg("Age is required");
+    if (!gender) return setErrorMsg("Gender is required");
+    if (!symptoms.trim()) return setErrorMsg("Symptoms are required");
+    if (!selectedSlotId) return setErrorMsg("Please select a slot");
+    setErrorMsg(null);
+    return true;
+  };
+
+
+  const submitBooking = async () => {
+    if (!selectedDoctor) return;
+    if (!validateBooking()) return;
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+
+    setBookingLoading(true);
+    setErrorMsg(null);
+    try {
+      const body = {
+        doctorId: selectedDoctor.id,
+        slotId: selectedSlotId,
+        allergies: allergiesInput ? allergiesInput.split(",").map(s => s.trim()).filter(Boolean) : [],
+        chronicDiseases: chronicInput ? chronicInput.split(",").map(s => s.trim()).filter(Boolean) : [],
+        bloodGroup,
+      };
+
+      const res = await axios.post(`${backendUrl}/appointments/book`, body, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      setSuccessMsg("Appointment booked successfully.");
+      // optionally remove booked slot from UI
+      setSlots(prev => prev.filter(s => s.id !== selectedSlotId));
+      // close modal after short delay
+      setTimeout(() => {
+        setModalOpen(false);
+      }, 1200);
+    } catch (err: any) {
+      console.error("Booking error", err);
+      const msg = err?.response?.data?.message || "Failed to book appointment";
+      setErrorMsg(msg);
+    } finally {
+      setBookingLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <p className="text-white text-center mt-20 text-lg">
+        Loading doctors...
+      </p>
+    );
+  }
+
   return (
     <div className="relative min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black overflow-hidden py-16 px-6">
-      {/*  Animated Background */}
-      <div className="absolute inset-0 overflow-hidden">
-        {[...Array(15)].map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute rounded-full bg-gradient-to-r from-emerald-600 via-green-500 to-teal-400 opacity-20"
-            initial={{
-              x: Math.random() * window.innerWidth,
-              y: Math.random() * window.innerHeight,
-              scale: Math.random() * 0.5 + 0.5,
-            }}
-            animate={{
-              x: [
-                Math.random() * window.innerWidth,
-                Math.random() * window.innerWidth,
-                Math.random() * window.innerWidth,
-              ],
-              y: [
-                Math.random() * window.innerHeight,
-                Math.random() * window.innerHeight,
-                Math.random() * window.innerHeight,
-              ],
-              scale: [
-                Math.random() * 0.5 + 0.5,
-                Math.random() * 1 + 1,
-                Math.random() * 0.5 + 0.5,
-              ],
-            }}
-            transition={{
-              duration: Math.random() * 20 + 20,
-              repeat: Infinity,
-              ease: "linear",
-            }}
-            style={{
-              width: `${Math.random() * 300 + 50}px`,
-              height: `${Math.random() * 300 + 50}px`,
-              filter: "blur(50px)",
-            }}
-          />
-        ))}
-      </div>
-
-      {/*  Main Content */}
+      {/* Search + Filters */}
       <div className="relative z-10 max-w-7xl mx-auto">
         <h1 className="text-4xl sm:text-5xl font-extrabold text-center mb-10 bg-gradient-to-r from-emerald-400 via-green-300 to-teal-300 text-transparent bg-clip-text">
           {t("findDoctors")}
         </h1>
 
-        {/*  Search & Filters */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-gray-900/70 backdrop-blur-md border border-gray-700 p-6 rounded-2xl shadow-lg mb-12"
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-gray-900/70 backdrop-blur-md border border-gray-700 p-6 rounded-2xl shadow-lg mb-12">
           <div className="grid md:grid-cols-4 gap-4">
-            <input
-              type="text"
-              placeholder={t("searchDoctor")}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            />
+            <input type="text" placeholder={t("searchDoctor")} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white" />
 
-            <select
-              value={filter.specialization}
-              onChange={(e) =>
-                setFilter({ ...filter, specialization: e.target.value })
-              }
-              className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white"
-            >
+            <select value={filter.specialization} onChange={(e) => setFilter({ ...filter, specialization: e.target.value })} className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white">
               <option value="">{t("specialization")}</option>
               <option value="Cardiologist">{t("Cardiologist")}</option>
               <option value="Dermatologist">{t("Dermatologist")}</option>
@@ -185,75 +200,237 @@ const FindDoctor: React.FC = () => {
               <option value="Orthopedic Surgeon">{t("OrthopedicSurgeon")}</option>
             </select>
 
-            <select
-              value={filter.location}
-              onChange={(e) => setFilter({ ...filter, location: e.target.value })}
-              className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white"
-            >
+            <select value={filter.location} onChange={(e) => setFilter({ ...filter, location: e.target.value })} className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white">
               <option value="">{t("location")}</option>
-              <option value="Delhi">{t("Delhi")}</option>
-              <option value="Mumbai">{t("Mumbai")}</option>
-              <option value="Bangalore">{t("Bangalore")}</option>
-              <option value="Chennai">{t("Chennai")}</option>
+              {[...new Set(doctors.map((d) => d.location))].map((loc) => <option key={loc} value={loc}>{loc}</option>)}
             </select>
 
-            <select
-              value={filter.education}
-              onChange={(e) =>
-                setFilter({ ...filter, education: e.target.value })
-              }
-              className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white"
-            >
+            <select value={filter.education} onChange={(e) => setFilter({ ...filter, education: e.target.value })} className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white">
               <option value="">{t("education")}</option>
-              <option value="MBBS">{t("MBBS")}</option>
-              <option value="MD">{t("MD")}</option>
-              <option value="MS">{t("MS")}</option>
-              <option value="DCH">{t("DCH")}</option>
+              <option value="MBBS">MBBS</option>
+              <option value="MD">MD</option>
+              <option value="MS">MS</option>
             </select>
           </div>
         </motion.div>
 
-        {/*  Doctors Grid */}
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8"
-        >
+        {/* Doctors Grid */}
+        <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
           {filteredDoctors.map((doctor) => (
-            <motion.div
-              key={doctor.id}
-              whileHover={{ scale: 1.05 }}
-              className="bg-gray-900/70 border border-gray-700 rounded-2xl shadow-md p-6 text-center transition-all backdrop-blur-sm hover:shadow-emerald-500/20"
-            >
-              <img
-                src={doctor.image}
-                alt={doctor.name}
-                className="w-24 h-24 rounded-full mx-auto mb-4 object-cover border-2 border-emerald-400"
-              />
-              <h2 className="text-lg font-semibold text-white">
-                {doctor.name}
-              </h2>
-              <p className="text-emerald-400 font-medium">
-                {t(doctor.specialization)}
-              </p>
+            <motion.div key={doctor.id} whileHover={{ scale: 1.05 }} className="bg-gray-900/70 border border-gray-700 rounded-2xl shadow-md p-6 text-center">
+              <img src={doctor.image} alt={doctor.name} className="w-24 h-24 rounded-full mx-auto mb-4 object-cover border-2 border-emerald-400" />
+              <h2 className="text-lg font-semibold text-white">{doctor.name}</h2>
+              <p className="text-emerald-400 font-medium">{doctor.specialization}</p>
               <p className="text-sm text-gray-400 mt-1">{doctor.education}</p>
-              <p className="text-sm text-gray-500">{t(doctor.location)}</p>
-              <p className="text-sm text-gray-500">
-                {doctor.experience} {t("yearsExperience")}
-              </p>
-              <button className="mt-3 bg-gradient-to-r from-emerald-600 via-green-500 to-teal-400 hover:opacity-90 text-white py-2 px-4 rounded-lg transition-all font-medium shadow-md">
+              <p className="text-sm text-gray-500">{doctor.location}</p>
+              <p className="text-sm text-gray-500">{doctor.experience} years</p>
+
+              <button onClick={() => onBookClick(doctor)} className="mt-3 bg-gradient-to-r from-emerald-600 via-green-500 to-teal-400 text-white py-2 px-4 rounded-lg">
                 {t("bookAppointment")}
               </button>
             </motion.div>
           ))}
-        </motion.div>
+        </div>
 
-        {filteredDoctors.length === 0 && (
-          <p className="text-center text-gray-400 mt-10">
-            {t("noDoctorsFound")}
-          </p>
-        )}
+        {filteredDoctors.length === 0 && <p className="text-center text-gray-400 mt-10">{t("noDoctorsFound")}</p>}
       </div>
+
+      {/* Booking Modal */}
+      {modalOpen && selectedDoctor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setModalOpen(false)}
+          />
+
+          <motion.div
+            initial={{ y: 30, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.18 }}
+            className="relative w-full max-w-2xl bg-gray-900/85 border border-gray-700 rounded-2xl shadow-2xl p-6 z-60"
+          >
+            <div className="flex items-start justify-between">
+              <h3 className="text-xl font-semibold text-white">
+                Book Appointment with {selectedDoctor.name}
+              </h3>
+              <button
+                className="text-gray-400 hover:text-white"
+                onClick={() => setModalOpen(false)}
+              >
+                Close
+              </button>
+            </div>
+
+            {/* Required Patient Information */}
+            <div className="grid md:grid-cols-2 gap-4 mt-4">
+
+              {/* AGE */}
+              <div>
+                <label className="text-sm text-gray-300">Age *</label>
+                <input
+                  value={age}
+                  onChange={(e) => setAge(e.target.value)}
+                  type="number"
+                  className="mt-1 w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-white"
+                  placeholder="Enter age"
+                />
+              </div>
+
+              {/* GENDER */}
+              <div>
+                <label className="text-sm text-gray-300">Gender *</label>
+                <select
+                  value={gender}
+                  onChange={(e) => setGender(e.target.value)}
+                  className="mt-1 w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-white"
+                >
+                  <option value="">Select gender</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+
+              {/* SYMPTOMS */}
+              <div className="md:col-span-2">
+                <label className="text-sm text-gray-300">Symptoms *</label>
+                <input
+                  value={symptoms}
+                  onChange={(e) => setSymptoms(e.target.value)}
+                  className="mt-1 w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-white"
+                  placeholder="Describe your symptoms"
+                />
+              </div>
+
+              {/* BODY TEMPERATURE */}
+              <div>
+                <label className="text-sm text-gray-300">Body Temperature (°C) (optional)*</label>
+                <input
+                  value={temperature}
+                  onChange={(e) => setTemperature(e.target.value)}
+                  type="number"
+                  className="mt-1 w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-white"
+                  placeholder="e.g. 98.6"
+                />
+              </div>
+
+              {/* PULSE */}
+              <div>
+                <label className="text-sm text-gray-300">Pulse (bpm)(optional) *</label>
+                <input
+                  value={pulse}
+                  onChange={(e) => setPulse(e.target.value)}
+                  type="number"
+                  className="mt-1 w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-white"
+                  placeholder="e.g. 72"
+                />
+              </div>
+
+              {/* BLOOD PRESSURE */}
+              <div>
+                <label className="text-sm text-gray-300">Blood Pressure (mmHg) (optional) *</label>
+                <input
+                  value={bloodPressure}
+                  onChange={(e) => setBloodPressure(e.target.value)}
+                  className="mt-1 w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-white"
+                  placeholder="e.g. 120/80"
+                />
+              </div>
+
+              {/* BREATHING RATE */}
+              <div>
+                <label className="text-sm text-gray-300">Breathing Rate (breaths/min) (optional) *</label>
+                <input
+                  value={breathingRate}
+                  onChange={(e) => setBreathingRate(e.target.value)}
+                  type="number"
+                  className="mt-1 w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-white"
+                  placeholder="e.g. 16"
+                />
+              </div>
+
+            </div>
+
+            {/* Optional Fields */}
+            <div className="grid md:grid-cols-2 gap-4 mt-6">
+              <div>
+                <label className="text-sm text-gray-300">Allergies (optional)</label>
+                <input
+                  value={allergiesInput}
+                  onChange={(e) => setAllergiesInput(e.target.value)}
+                  className="mt-1 w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-white"
+                  placeholder="e.g. Penicillin"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm text-gray-300">Chronic Diseases (optional)</label>
+                <input
+                  value={chronicInput}
+                  onChange={(e) => setChronicInput(e.target.value)}
+                  className="mt-1 w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-white"
+                  placeholder="e.g. Diabetes"
+                />
+              </div>
+            </div>
+
+            {/* Slots Section */}
+            <div className="mt-6">
+              <h4 className="text-sm text-gray-300 mb-2">Available Slots</h4>
+
+              {slotsLoading ? (
+                <p className="text-gray-400">Loading slots...</p>
+              ) : slots.length === 0 ? (
+                <p className="text-gray-400">No slots available.</p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {slots.map((s) => {
+                    const isSelected = selectedSlotId === s.id;
+                    return (
+                      <button
+                        key={s.id}
+                        onClick={() => setSelectedSlotId(s.id)}
+                        className={`text-left p-3 rounded-md border ${isSelected
+                            ? "border-emerald-400 bg-emerald-900/30"
+                            : "border-gray-700 bg-gray-800"
+                          }`}
+                      >
+                        <div className="text-sm text-white font-medium">{s.slot}</div>
+                        <div className="text-xs text-gray-400">
+                          {new Date(s.date).toLocaleString()}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Error / Success */}
+            {errorMsg && <p className="text-red-400 mt-4">{errorMsg}</p>}
+            {successMsg && <p className="text-green-400 mt-4">{successMsg}</p>}
+
+            {/* Buttons */}
+            <div className="flex items-center justify-end gap-3 mt-6">
+              <button
+                className="px-4 py-2 rounded-md bg-gray-700 text-white"
+                onClick={() => setModalOpen(false)}
+              >
+                Cancel
+              </button>
+
+              <button
+                disabled={bookingLoading}
+                onClick={submitBooking}
+                className="px-4 py-2 rounded-md bg-emerald-500 text-black font-semibold"
+              >
+                {bookingLoading ? "Booking..." : "Confirm & Book"}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
     </div>
   );
 };

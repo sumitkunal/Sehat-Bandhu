@@ -26,8 +26,6 @@ const PatientDashboard: React.FC = () => {
       status: "Scheduled",
     },
   ];
-
-  // 🔹 Check login + Fetch user info
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
