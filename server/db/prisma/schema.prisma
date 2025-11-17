@@ -1,8 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,6 +6,12 @@ datasource db {
   provider = "mongodb"
   url      = env("DATABASE_URL")
 }
+
+//
+// ───────────────────────────────────────────
+// USERS (Patients, Doctors, Admin)
+// ───────────────────────────────────────────
+//
 
 model User {
   id         String    @id @default(auto()) @map("_id") @db.ObjectId
@@ -21,48 +22,195 @@ model User {
   status     Status
   lastLogin  DateTime?
   profile    Profile?
+  doctor     Doctor?   @relation("UserDoctor")
+  patient    Patient?  @relation("UserPatient")
+  notifications Notification[]
 
   @@index([role])
   @@index([phone])
 }
 
+//
+// ───────────────────────────────────────────
+// PATIENT DETAILS
+// ───────────────────────────────────────────
+//
+
+model Patient {
+  id        String  @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String  @db.ObjectId @unique
+  user      User    @relation("UserPatient", fields: [userId], references: [id])
+
+  // patient medical info (optional)
+  allergies      String[]
+  chronicDiseases String[]
+  bloodGroup     String?
+  appointments Appointment[]
+  symptooms String[] 
+  pulse      Int
+  bloodPressure Int 
+  breathingRate Int
+  temperature Int
+  age      Int
+
+}
+
+//
+// ───────────────────────────────────────────
+// PROFILE (Common for doctors & patients)
+// ───────────────────────────────────────────
+//
+
 model Profile {
   id           String   @id @default(auto()) @map("_id") @db.ObjectId
   userId       String   @db.ObjectId @unique
   user         User     @relation(fields: [userId], references: [id])
+
   name         String
   dob          DateTime?
   gender       String?
   address      Address?
   geo          Geo?
-  avatarFileId String?
+
+  // image stored as bytes
+  avatar       Bytes?
+  avatarType   String?
+
   @@index([address.state, address.district])
 }
-model doctor {
-  id  String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId String   @db.ObjectId @unique
-  regNo String
-  specialties String[]
-  clinicName String?
+
+//
+// ───────────────────────────────────────────
+// DOCTOR DETAILS
+// ───────────────────────────────────────────
+//
+
+model Doctor {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId           String   @db.ObjectId @unique
+  user             User     @relation("UserDoctor", fields: [userId], references: [id])
+
+  regNo            String
+  specialties      String[]
+  clinicName       String?
   yearOfExperience Int?
-  languase String[]
-  about String?
-  verification Verification?
+  language         String[]
+  about            String?
+  verification     Verification?
+
+  appointments Appointment[]
 }
+
+//
+// ───────────────────────────────────────────
+// APPOINTMENTS
+// ───────────────────────────────────────────
+//
+
+model Appointment {
+  id            String     @id @default(auto()) @map("_id") @db.ObjectId
+
+  doctorId      String     @db.ObjectId
+  doctor        Doctor     @relation(fields: [doctorId], references: [id])
+
+  patientId     String     @db.ObjectId
+  patient       Patient    @relation(fields: [patientId], references: [id])
+
+  date          DateTime   // appointment date
+  slot          String     // "10:30 AM - 11:00 AM"
+
+  symptoms      String[]   // reason for visit
+  notes         String?    // doctor's notes
+
+  status        AppointmentStatus
+  paymentStatus PaymentStatus
+  paymentId     String?
+
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  rescheduleHistory Reschedule[]
+}
+
+//
+// ───────────────────────────────────────────
+// APPOINTMENT RESCHEDULE HISTORY
+// ───────────────────────────────────────────
+//
+
+model Reschedule {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+
+  appointmentId String    @db.ObjectId
+  appointment   Appointment @relation(fields: [appointmentId], references: [id])
+
+  oldDate       DateTime?
+  newDate       DateTime?
+  oldSlot       String?
+  newSlot       String?
+
+  changedAt     DateTime  @default(now())
+}
+
+//
+// ───────────────────────────────────────────
+// NOTIFICATIONS (optional)
+// ───────────────────────────────────────────
+//
+
+model Notification {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId   String   @db.ObjectId
+  user     User     @relation(fields: [userId], references: [id])
+
+  title    String
+  message  String
+  read     Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+//
+// ───────────────────────────────────────────
+// ENUMS
+// ───────────────────────────────────────────
+//
+
 enum Role {
   patient
   doctor
   admin
 }
+
 enum Status {
   active
   pending
   blocked
 }
+
+enum AppointmentStatus {
+  upcoming
+  completed
+  cancelled
+  rescheduled
+}
+
+enum PaymentStatus {
+  pending
+  paid
+  refunded
+}
+
+//
+// ───────────────────────────────────────────
+// TYPES
+// ───────────────────────────────────────────
+//
+
 type Verification {
   status    Status
   documents String[]
 }
+
 type Address {
   line      String?
   district  String?

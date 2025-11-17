@@ -12,6 +12,9 @@ if (!process.env.JWT_SECRET) {
     throw new Error('JWT_SECRET environment variable is not defined');
 }
 
+import multer from "multer";
+const upload = multer();
+
 const app = express();
 app.use(express.json());
 app.use(cors({
@@ -117,6 +120,104 @@ app.get("/auth/me", authMiddleware, async (req, res) => {
         res.status(500).json({ message: "Server error" });
     }
 });
+
+app.get("/getdoc", async (req, res) => {
+  try {
+    const doctors = await prisma.doctor.findMany({
+      include: {
+        user: {
+          include: {
+            profile: true,
+          },
+        },
+      },
+    });
+    const mappedDoctors = doctors.map((d) => {
+      let image = "https://via.placeholder.com/150";
+      if (d.user?.profile?.avatar) {
+        const base64 = Buffer.from(d.user.profile.avatar).toString("base64");
+        const mime = d.user.profile.avatarType || "image/png";
+
+        image = `data:${mime};base64,${base64}`;
+      }
+      return {
+        id: d.id,
+        name: d.user?.profile?.name || "Unknown",
+        specialization: d.specialties?.[0] || "",
+        location: d.user?.profile?.address?.district || "Unknown",
+        state: d.user?.profile?.address?.state || "Unknown",
+        education: "MBBS",
+        experience: d.yearOfExperience || 0,
+        image,
+      };
+    });
+
+    res.json(mappedDoctors);
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Failed to fetch doctors" });
+  }
+});
+
+app.post("/auth/doctor/signup", upload.single("avatar"), async (req, res) => {
+  try {
+    const {
+      name, email, phone, password, specialties,
+      regNo, clinicName, yearOfExperience, languages
+    } = req.body;
+
+    const avatarFile = req.file; // Multer gives file here
+
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing)
+      return res.status(400).json({ message: "Email already registered" });
+
+    const hash = await bcrypt.hash(password, 10);
+
+    const user = await prisma.user.create({
+      data: {
+        email,
+        phone,
+        password: hash,
+        role: "doctor",
+        status: "pending",
+
+        profile: {
+          create: {
+            name,
+            avatar: avatarFile?.buffer || null,        // store binary
+            avatarType: avatarFile?.mimetype || null,  // store MIME-type
+          },
+        },
+
+        doctor: {
+          create: {
+            regNo,
+            specialties: specialties ? JSON.parse(specialties) : [],
+            clinicName,
+            yearOfExperience: parseInt(yearOfExperience) || null,
+            languase: languages ? JSON.parse(languages) : [],
+            verification: {
+              status: "pending",
+              documents: [],
+            },
+          },
+        },
+      },
+    });
+
+    return res.status(201).json({
+      message: "Doctor registered successfully",
+      user,
+    });
+
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
 
 app.listen('3000', () => {
     console.log("Server is running on port 3000");
