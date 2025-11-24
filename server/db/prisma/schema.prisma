@@ -7,9 +7,11 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+
+
 //
 // ───────────────────────────────────────────
-// USERS (Patients, Doctors, Admin)
+// USERS
 // ───────────────────────────────────────────
 //
 
@@ -21,9 +23,11 @@ model User {
   role       Role
   status     Status
   lastLogin  DateTime?
+
   profile    Profile?
-  doctor     Doctor?   @relation("UserDoctor")
-  patient    Patient?  @relation("UserPatient")
+  doctor     Doctor?    @relation("UserDoctor")
+  patient    Patient?   @relation("UserPatient")
+
   notifications Notification[]
 
   @@index([role])
@@ -32,7 +36,7 @@ model User {
 
 //
 // ───────────────────────────────────────────
-// PATIENT DETAILS
+// PATIENT
 // ───────────────────────────────────────────
 //
 
@@ -41,23 +45,24 @@ model Patient {
   userId    String  @db.ObjectId @unique
   user      User    @relation("UserPatient", fields: [userId], references: [id])
 
-  // patient medical info (optional)
-  allergies      String[]
-  chronicDiseases String[]
-  bloodGroup     String?
-  appointments Appointment[]
-  symptooms String[] 
-  pulse      Int
-  bloodPressure Int 
-  breathingRate Int
-  temperature Int
-  age      Int
+  // Optional medical info
+  allergies        String[]
+  chronicDiseases  String[]
+  bloodGroup       String?
 
+  age              Int?
+  symptoms         String[]
+  temperature      Float?
+  pulse            Int?
+  bloodPressure    String?
+  breathingRate    Int?
+
+  appointments     Appointment[]
 }
 
 //
 // ───────────────────────────────────────────
-// PROFILE (Common for doctors & patients)
+// PROFILE
 // ───────────────────────────────────────────
 //
 
@@ -72,7 +77,6 @@ model Profile {
   address      Address?
   geo          Geo?
 
-  // image stored as bytes
   avatar       Bytes?
   avatarType   String?
 
@@ -81,7 +85,7 @@ model Profile {
 
 //
 // ───────────────────────────────────────────
-// DOCTOR DETAILS
+// DOCTOR
 // ───────────────────────────────────────────
 //
 
@@ -96,9 +100,11 @@ model Doctor {
   yearOfExperience Int?
   language         String[]
   about            String?
+
   verification     Verification?
 
-  appointments Appointment[]
+  appointments     Appointment[]
+  Availability     Availability[]
 }
 
 //
@@ -108,33 +114,53 @@ model Doctor {
 //
 
 model Appointment {
-  id            String     @id @default(auto()) @map("_id") @db.ObjectId
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  
+  doctorId      String   @db.ObjectId
+  patientId     String   @db.ObjectId
 
-  doctorId      String     @db.ObjectId
-  doctor        Doctor     @relation(fields: [doctorId], references: [id])
+  doctor        Doctor   @relation(fields: [doctorId], references: [id])
+  patient       Patient  @relation(fields: [patientId], references: [id])
 
-  patientId     String     @db.ObjectId
-  patient       Patient    @relation(fields: [patientId], references: [id])
+  date          String
+  time          String
 
-  date          DateTime   // appointment date
-  slot          String     // "10:30 AM - 11:00 AM"
+  age               Int
+  gender            String
+  symptoms          String
+  allergies         String[]
+  chronicDiseases   String[]
+  temperature       Float?
+  pulse             Int?
+  bloodPressure     String?
+  breathingRate     Int?
 
-  symptoms      String[]   // reason for visit
-  notes         String?    // doctor's notes
+  status            AppointmentStatus
+  reschedules       Reschedule[] @relation("AppointmentReschedule")
+}
 
-  status        AppointmentStatus
-  paymentStatus PaymentStatus
-  paymentId     String?
 
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+//
+// ───────────────────────────────────────────
+// DOCTOR AVAILABILITY
+// ───────────────────────────────────────────
+//
 
-  rescheduleHistory Reschedule[]
+model Availability {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+
+  doctorId  String   @db.ObjectId
+  doctor    Doctor   @relation(fields: [doctorId], references: [id])
+
+  date      String
+  slots     String[]
+
+  @@unique([doctorId, date], name: "doctorId_date")
 }
 
 //
 // ───────────────────────────────────────────
-// APPOINTMENT RESCHEDULE HISTORY
+// RESCHEDULE HISTORY
 // ───────────────────────────────────────────
 //
 
@@ -142,7 +168,8 @@ model Reschedule {
   id            String    @id @default(auto()) @map("_id") @db.ObjectId
 
   appointmentId String    @db.ObjectId
-  appointment   Appointment @relation(fields: [appointmentId], references: [id])
+
+  appointment   Appointment @relation("AppointmentReschedule", fields: [appointmentId], references: [id])
 
   oldDate       DateTime?
   newDate       DateTime?
@@ -152,21 +179,22 @@ model Reschedule {
   changedAt     DateTime  @default(now())
 }
 
+
 //
 // ───────────────────────────────────────────
-// NOTIFICATIONS (optional)
+// NOTIFICATIONS
 // ───────────────────────────────────────────
 //
 
 model Notification {
-  id       String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId   String   @db.ObjectId
-  user     User     @relation(fields: [userId], references: [id])
+  id         String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId     String    @db.ObjectId
+  user       User      @relation(fields: [userId], references: [id])
 
-  title    String
-  message  String
-  read     Boolean  @default(false)
-  createdAt DateTime @default(now())
+  title      String
+  message    String
+  read       Boolean   @default(false)
+  createdAt  DateTime  @default(now())
 }
 
 //
@@ -202,7 +230,7 @@ enum PaymentStatus {
 
 //
 // ───────────────────────────────────────────
-// TYPES
+// EMBEDDED TYPES
 // ───────────────────────────────────────────
 //
 

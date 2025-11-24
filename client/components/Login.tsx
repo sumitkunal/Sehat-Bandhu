@@ -43,7 +43,7 @@ const Login: React.FC = () => {
 
       localStorage.setItem("token", data.token);
       localStorage.setItem("isLoggedIn", "true");
-
+      localStorage.setItem("role", data.user.role);
       navigate("/appointments");
     } catch (err: any) {
       console.error("Login Error:", err);

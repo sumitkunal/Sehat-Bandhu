@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
@@ -6,431 +6,455 @@ import axios from "axios";
 
 const backendUrl = (import.meta as any)?.env?.VITE_BACKEND_URL || "http://localhost:3000";
 
+/**
+ * Types
+ */
 interface Doctor {
   id: string;
   name: string;
-  specialization: string;
-  location: string;
-  state: string;
-  education: string;
-  experience: number;
-  image: string;
+  specialization?: string;
+  location?: string;
+  state?: string;
+  education?: string;
+  experience?: number;
+  image?: string;
+  specialties?: string[];
+  language?: string[];
+  [k: string]: any;
 }
 
 interface Slot {
   id: string;
-  date: string; // ISO
-  slot: string; // "10:00 AM - 10:30 AM"
+  date: string;
+  slot: string; // human readable time range
 }
 
 const FindDoctor: React.FC = () => {
   const { t } = useTranslation("findDoctor");
   const navigate = useNavigate();
 
+  // --- Search & Data States ---
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState({ specialization: "", location: "", education: "" });
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Booking modal state
+  // --- Modal & Booking States ---
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
+
   const [slots, setSlots] = useState<Slot[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
+  
+  // NEW: State to track the currently selected date filter
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
 
-  // patient form fields
-  const [allergiesInput, setAllergiesInput] = useState("");
-  const [chronicInput, setChronicInput] = useState("");
-  const [bloodGroup, setBloodGroup] = useState("");
-  const [bookingLoading, setBookingLoading] = useState(false);
+  // --- Form Inputs ---
+  const [age, setAge] = useState<string>("");
+  const [gender, setGender] = useState<string>("");
+  const [symptoms, setSymptoms] = useState<string>("");
+  const [temperature, setTemperature] = useState<string>("");
+  const [pulse, setPulse] = useState<string>("");
+  const [bloodPressure, setBloodPressure] = useState<string>("");
+  const [breathingRate, setBreathingRate] = useState<string>("");
+  const [allergiesInput, setAllergiesInput] = useState<string>("");
+  const [chronicInput, setChronicInput] = useState<string>("");
+
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  const [age, setAge] = useState("");
-  const [gender, setGender] = useState("");
-  const [symptoms, setSymptoms] = useState("");
+  const [bookingLoading, setBookingLoading] = useState(false);
 
-  const [temperature, setTemperature] = useState("");
-  const [pulse, setPulse] = useState("");
-  const [bloodPressure, setBloodPressure] = useState("");
-  const [breathingRate, setBreathingRate] = useState("");
-
-  // Load Doctors
+  // ----------------------------------------------------
+  // 1. LOAD DOCTORS
+  // ----------------------------------------------------
   useEffect(() => {
-    const fetchDoctors = async () => {
+    let mounted = true;
+    const loadDoctors = async () => {
       try {
         const res = await fetch(`${backendUrl}/getdoc`);
         const data = await res.json();
 
-        const updatedData = data.map((doc: Doctor) => ({
-          ...doc,
-          image: doc.image && doc.image.startsWith("data:") ? doc.image : "https://via.placeholder.com/150",
-        }));
+        if (!Array.isArray(data)) {
+          if (mounted) setDoctors([]);
+          return;
+        }
 
-        setDoctors(updatedData);
+        const mapped: Doctor[] = data.map((doc: any) => {
+          const id = String(doc.id ?? doc._id ?? doc.user?.id ?? "");
+          return {
+            id,
+            name: doc.name ?? doc.user?.profile?.name ?? "Unknown",
+            specialization: doc.specialization ?? doc.specialties?.[0] ?? "General",
+            location: doc.location ?? doc.user?.profile?.address?.district ?? "Unknown",
+            state: doc.state ?? doc.user?.profile?.address?.state ?? "",
+            education: doc.education ?? "MBBS",
+            experience: typeof doc.experience === "number" ? doc.experience : (doc.yearOfExperience ? Number(doc.yearOfExperience) : 0),
+            image: doc.image ?? (doc.user?.profile?.avatar ? doc.user.profile.avatar : "https://via.placeholder.com/150"),
+            specialties: Array.isArray(doc.specialties) ? doc.specialties : undefined,
+            language: Array.isArray(doc.language) ? doc.language : undefined,
+            raw: doc,
+          } as Doctor;
+        });
+
+        if (mounted) setDoctors(mapped);
       } catch (err) {
-        console.error("Error fetching doctors:", err);
+        console.error("Error loading doctors:", err);
+        if (mounted) setDoctors([]);
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     };
 
-    fetchDoctors();
+    loadDoctors();
+    return () => { mounted = false; };
   }, []);
 
-  const filteredDoctors = doctors.filter(
-    (doctor) =>
-      doctor.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
-      (filter.specialization ? doctor.specialization === filter.specialization : true) &&
-      (filter.location ? doctor.location === filter.location : true) &&
-      (filter.education ? doctor.education.includes(filter.education) : true)
-  );
+  // ----------------------------------------------------
+  // 2. DATA GROUPING LOGIC (NEW)
+  // ----------------------------------------------------
+  
+  // Group slots by date: { "2024-11-25": [Slot, Slot], "2024-11-26": [...] }
+  const slotsByDate = useMemo(() => {
+    const groups: Record<string, Slot[]> = {};
+    slots.forEach((s) => {
+      // Ensure we use the date string as key
+      const d = s.date || "Unknown Date";
+      if (!groups[d]) {
+        groups[d] = [];
+      }
+      groups[d].push(s);
+    });
+    return groups;
+  }, [slots]);
 
-  // open booking modal -> check auth
+  // Get unique dates for the tabs
+  const uniqueDates = useMemo(() => Object.keys(slotsByDate), [slotsByDate]);
+
+  // Auto-select the first date when slots change
+  useEffect(() => {
+    if (uniqueDates.length > 0) {
+      // Only reset if the currently selected date isn't in the new list
+      if (!selectedDate || !uniqueDates.includes(selectedDate)) {
+        setSelectedDate(uniqueDates[0]);
+      }
+    } else {
+      setSelectedDate(null);
+    }
+  }, [uniqueDates, selectedDate]);
+
+  // ----------------------------------------------------
+  // 3. HANDLERS
+  // ----------------------------------------------------
   const onBookClick = async (doctor: Doctor) => {
     const token = localStorage.getItem("token");
     if (!token) {
-      // not logged in
       navigate("/login");
       return;
     }
 
-    // reset modal state
     setSelectedDoctor(doctor);
-    setSelectedSlotId(null);
-    setAllergiesInput("");
-    setChronicInput("");
-    setBloodGroup("");
-    setErrorMsg(null);
-    setSuccessMsg(null);
     setModalOpen(true);
+    setSelectedSlotId(null);
+    setSuccessMsg(null);
+    setErrorMsg(null);
+    setSlots([]);
+    setSelectedDate(null);
 
-    // fetch available slots
     setSlotsLoading(true);
     try {
       const res = await axios.get(`${backendUrl}/doctor/${doctor.id}/slots`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: token ? `Bearer ${token}` : "" },
       });
-      // expecting { slots: Slot[] }
-      setSlots(res.data?.slots || []);
+
+      const serverSlots = res.data?.slots;
+      if (!Array.isArray(serverSlots)) {
+        setSlots([]);
+      } else {
+        const normalized: Slot[] = serverSlots.map((s: any, idx: number) => ({
+          id: String(s.id ?? `${s.date ?? ""}-${s.slot ?? ""}-${idx}`),
+          date: String(s.date ?? ""),
+          slot: String(s.slot ?? (s.time ?? "")),
+        }));
+        setSlots(normalized);
+      }
     } catch (err) {
-      console.error("Failed to fetch slots", err);
-      setErrorMsg("Failed to load available slots. Try again later.");
+      console.error("Slots fetch error", err);
+      setErrorMsg("Failed to load slots.");
+      setSlots([]);
     } finally {
       setSlotsLoading(false);
     }
   };
 
   const validateBooking = () => {
-    if (!age || Number(age) <= 0) return setErrorMsg("Age is required");
-    if (!gender) return setErrorMsg("Gender is required");
-    if (!symptoms.trim()) return setErrorMsg("Symptoms are required");
-    if (!selectedSlotId) return setErrorMsg("Please select a slot");
+    if (!age.trim()) { setErrorMsg("Age is required"); return false; }
+    if (!gender.trim()) { setErrorMsg("Gender is required"); return false; }
+    if (!symptoms.trim()) { setErrorMsg("Symptoms are required"); return false; }
+    if (!selectedSlotId) { setErrorMsg("Please select a slot"); return false; }
     setErrorMsg(null);
     return true;
   };
 
-
   const submitBooking = async () => {
-    if (!selectedDoctor) return;
-    if (!validateBooking()) return;
+    if (!validateBooking() || !selectedDoctor || !selectedSlotId) return;
 
-    const token = localStorage.getItem("token");
-    if (!token) {
-      navigate("/login");
+    const slotDetails = slots.find((s) => s.id === selectedSlotId);
+    if (!slotDetails) {
+      setErrorMsg("Invalid slot selected");
       return;
     }
 
+    const token = localStorage.getItem("token");
     setBookingLoading(true);
-    setErrorMsg(null);
     try {
+      const parsedAge = Number(age);
+      const parsedTemp = temperature.trim() ? parseFloat(temperature) : undefined;
+      const parsedPulse = pulse.trim() ? Number(pulse) : undefined;
+      const parsedBreathing = breathingRate.trim() ? Number(breathingRate) : undefined;
+
       const body = {
         doctorId: selectedDoctor.id,
         slotId: selectedSlotId,
+        date: slotDetails.date,
+        time: slotDetails.slot,
+        age: Number.isNaN(parsedAge) ? 0 : parsedAge,
+        gender,
+        symptoms,
+        temperature: parsedTemp,
+        pulse: parsedPulse,
+        bloodPressure: bloodPressure || undefined,
+        breathingRate: parsedBreathing,
         allergies: allergiesInput ? allergiesInput.split(",").map(s => s.trim()).filter(Boolean) : [],
-        chronicDiseases: chronicInput ? chronicInput.split(",").map(s => s.trim()).filter(Boolean) : [],
-        bloodGroup,
+        chronicDiseases: chronicInput ? chronicInput.split(",").map(s => s.trim()).filter(Boolean) : []
       };
 
-      const res = await axios.post(`${backendUrl}/appointments/book`, body, {
-        headers: { Authorization: `Bearer ${token}` },
+      await axios.post(`${backendUrl}/book`, body, {
+        headers: { Authorization: token ? `Bearer ${token}` : "" },
       });
 
-      setSuccessMsg("Appointment booked successfully.");
-      // optionally remove booked slot from UI
-      setSlots(prev => prev.filter(s => s.id !== selectedSlotId));
-      // close modal after short delay
-      setTimeout(() => {
-        setModalOpen(false);
-      }, 1200);
+      setSuccessMsg("Appointment booked successfully!");
+      setErrorMsg(null);
+      setTimeout(() => setModalOpen(false), 1200);
     } catch (err: any) {
-      console.error("Booking error", err);
-      const msg = err?.response?.data?.message || "Failed to book appointment";
-      setErrorMsg(msg);
+      console.error("Booking error:", err?.response ?? err);
+      setErrorMsg(err?.response?.data?.error ?? "Booking failed.");
     } finally {
       setBookingLoading(false);
     }
   };
 
-  if (loading) {
-    return (
-      <p className="text-white text-center mt-20 text-lg">
-        Loading doctors...
-      </p>
-    );
-  }
+  const filteredDoctors = doctors.filter((d) =>
+    (d.name ?? "").toLowerCase().includes(searchTerm.toLowerCase()) &&
+    (filter.specialization ? (d.specialization ?? "") === filter.specialization : true) &&
+    (filter.location ? (d.location ?? "") === filter.location : true) &&
+    (filter.education ? (d.education ?? "") === filter.education : true)
+  );
+
+  if (loading) return <p className="text-white text-center mt-10">Loading...</p>;
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black overflow-hidden py-16 px-6">
-      {/* Search + Filters */}
-      <div className="relative z-10 max-w-7xl mx-auto">
-        <h1 className="text-4xl sm:text-5xl font-extrabold text-center mb-10 bg-gradient-to-r from-emerald-400 via-green-300 to-teal-300 text-transparent bg-clip-text">
-          {t("findDoctors")}
-        </h1>
+    <div className="min-h-screen px-6 py-16 text-white bg-gradient-to-br from-gray-900 via-gray-800 to-black">
+      <h1 className="text-4xl sm:text-5xl font-bold text-center mb-10 bg-gradient-to-r from-emerald-400 to-teal-300 text-transparent bg-clip-text">
+        {t("findDoctors")}
+      </h1>
 
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-gray-900/70 backdrop-blur-md border border-gray-700 p-6 rounded-2xl shadow-lg mb-12">
-          <div className="grid md:grid-cols-4 gap-4">
-            <input type="text" placeholder={t("searchDoctor")} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white" />
-
-            <select value={filter.specialization} onChange={(e) => setFilter({ ...filter, specialization: e.target.value })} className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white">
-              <option value="">{t("specialization")}</option>
-              <option value="Cardiologist">{t("Cardiologist")}</option>
-              <option value="Dermatologist">{t("Dermatologist")}</option>
-              <option value="Pediatrician">{t("Pediatrician")}</option>
-              <option value="Orthopedic Surgeon">{t("OrthopedicSurgeon")}</option>
-            </select>
-
-            <select value={filter.location} onChange={(e) => setFilter({ ...filter, location: e.target.value })} className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white">
-              <option value="">{t("location")}</option>
-              {[...new Set(doctors.map((d) => d.location))].map((loc) => <option key={loc} value={loc}>{loc}</option>)}
-            </select>
-
-            <select value={filter.education} onChange={(e) => setFilter({ ...filter, education: e.target.value })} className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white">
-              <option value="">{t("education")}</option>
-              <option value="MBBS">MBBS</option>
-              <option value="MD">MD</option>
-              <option value="MS">MS</option>
-            </select>
-          </div>
-        </motion.div>
-
-        {/* Doctors Grid */}
-        <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
-          {filteredDoctors.map((doctor) => (
-            <motion.div key={doctor.id} whileHover={{ scale: 1.05 }} className="bg-gray-900/70 border border-gray-700 rounded-2xl shadow-md p-6 text-center">
-              <img src={doctor.image} alt={doctor.name} className="w-24 h-24 rounded-full mx-auto mb-4 object-cover border-2 border-emerald-400" />
-              <h2 className="text-lg font-semibold text-white">{doctor.name}</h2>
-              <p className="text-emerald-400 font-medium">{doctor.specialization}</p>
-              <p className="text-sm text-gray-400 mt-1">{doctor.education}</p>
-              <p className="text-sm text-gray-500">{doctor.location}</p>
-              <p className="text-sm text-gray-500">{doctor.experience} years</p>
-
-              <button onClick={() => onBookClick(doctor)} className="mt-3 bg-gradient-to-r from-emerald-600 via-green-500 to-teal-400 text-white py-2 px-4 rounded-lg">
-                {t("bookAppointment")}
-              </button>
-            </motion.div>
-          ))}
+      {/* Filters */}
+      <div className="bg-gray-900/70 p-6 rounded-xl border border-gray-700 mb-12">
+        <div className="grid md:grid-cols-4 gap-4">
+          <input
+            type="text"
+            placeholder={t("searchDoctor")}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white"
+          />
+          <select
+            value={filter.specialization}
+            onChange={(e) => setFilter({ ...filter, specialization: e.target.value })}
+            className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white"
+          >
+            <option value="">Specialization</option>
+            <option value="Cardiologist">Cardiologist</option>
+            <option value="Dermatologist">Dermatologist</option>
+            <option value="Pediatrician">Pediatrician</option>
+            <option value="Orthopedic Surgeon">Orthopedic Surgeon</option>
+          </select>
+          <select
+            value={filter.location}
+            onChange={(e) => setFilter({ ...filter, location: e.target.value })}
+            className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white"
+          >
+            <option value="">Location</option>
+            {[...new Set(doctors.map((d) => d.location ?? ""))].map((loc) => (
+              <option key={loc} value={loc}>{loc}</option>
+            ))}
+          </select>
+          <select
+            value={filter.education}
+            onChange={(e) => setFilter({ ...filter, education: e.target.value })}
+            className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white"
+          >
+            <option value="">Education</option>
+            <option value="MBBS">MBBS</option>
+            <option value="MD">MD</option>
+            <option value="MS">MS</option>
+          </select>
         </div>
-
-        {filteredDoctors.length === 0 && <p className="text-center text-gray-400 mt-10">{t("noDoctorsFound")}</p>}
       </div>
 
-      {/* Booking Modal */}
-      {modalOpen && selectedDoctor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-          <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => setModalOpen(false)}
-          />
-
+      {/* Doctor List */}
+      <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+        {filteredDoctors.map((doctor) => (
           <motion.div
-            initial={{ y: 30, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.18 }}
-            className="relative w-full max-w-2xl bg-gray-900/85 border border-gray-700 rounded-2xl shadow-2xl p-6 z-60"
+            key={doctor.id}
+            whileHover={{ scale: 1.05 }}
+            className="bg-gray-900/70 border border-gray-700 rounded-2xl shadow-md p-6 text-center"
           >
-            <div className="flex items-start justify-between">
-              <h3 className="text-xl font-semibold text-white">
-                Book Appointment with {selectedDoctor.name}
-              </h3>
-              <button
-                className="text-gray-400 hover:text-white"
-                onClick={() => setModalOpen(false)}
-              >
-                Close
-              </button>
-            </div>
-
-            {/* Required Patient Information */}
-            <div className="grid md:grid-cols-2 gap-4 mt-4">
-
-              {/* AGE */}
-              <div>
-                <label className="text-sm text-gray-300">Age *</label>
-                <input
-                  value={age}
-                  onChange={(e) => setAge(e.target.value)}
-                  type="number"
-                  className="mt-1 w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-white"
-                  placeholder="Enter age"
-                />
-              </div>
-
-              {/* GENDER */}
-              <div>
-                <label className="text-sm text-gray-300">Gender *</label>
-                <select
-                  value={gender}
-                  onChange={(e) => setGender(e.target.value)}
-                  className="mt-1 w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-white"
-                >
-                  <option value="">Select gender</option>
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-
-              {/* SYMPTOMS */}
-              <div className="md:col-span-2">
-                <label className="text-sm text-gray-300">Symptoms *</label>
-                <input
-                  value={symptoms}
-                  onChange={(e) => setSymptoms(e.target.value)}
-                  className="mt-1 w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-white"
-                  placeholder="Describe your symptoms"
-                />
-              </div>
-
-              {/* BODY TEMPERATURE */}
-              <div>
-                <label className="text-sm text-gray-300">Body Temperature (°C) (optional)*</label>
-                <input
-                  value={temperature}
-                  onChange={(e) => setTemperature(e.target.value)}
-                  type="number"
-                  className="mt-1 w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-white"
-                  placeholder="e.g. 98.6"
-                />
-              </div>
-
-              {/* PULSE */}
-              <div>
-                <label className="text-sm text-gray-300">Pulse (bpm)(optional) *</label>
-                <input
-                  value={pulse}
-                  onChange={(e) => setPulse(e.target.value)}
-                  type="number"
-                  className="mt-1 w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-white"
-                  placeholder="e.g. 72"
-                />
-              </div>
-
-              {/* BLOOD PRESSURE */}
-              <div>
-                <label className="text-sm text-gray-300">Blood Pressure (mmHg) (optional) *</label>
-                <input
-                  value={bloodPressure}
-                  onChange={(e) => setBloodPressure(e.target.value)}
-                  className="mt-1 w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-white"
-                  placeholder="e.g. 120/80"
-                />
-              </div>
-
-              {/* BREATHING RATE */}
-              <div>
-                <label className="text-sm text-gray-300">Breathing Rate (breaths/min) (optional) *</label>
-                <input
-                  value={breathingRate}
-                  onChange={(e) => setBreathingRate(e.target.value)}
-                  type="number"
-                  className="mt-1 w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-white"
-                  placeholder="e.g. 16"
-                />
-              </div>
-
-            </div>
-
-            {/* Optional Fields */}
-            <div className="grid md:grid-cols-2 gap-4 mt-6">
-              <div>
-                <label className="text-sm text-gray-300">Allergies (optional)</label>
-                <input
-                  value={allergiesInput}
-                  onChange={(e) => setAllergiesInput(e.target.value)}
-                  className="mt-1 w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-white"
-                  placeholder="e.g. Penicillin"
-                />
-              </div>
-
-              <div>
-                <label className="text-sm text-gray-300">Chronic Diseases (optional)</label>
-                <input
-                  value={chronicInput}
-                  onChange={(e) => setChronicInput(e.target.value)}
-                  className="mt-1 w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-white"
-                  placeholder="e.g. Diabetes"
-                />
-              </div>
-            </div>
-
-            {/* Slots Section */}
-            <div className="mt-6">
-              <h4 className="text-sm text-gray-300 mb-2">Available Slots</h4>
-
-              {slotsLoading ? (
-                <p className="text-gray-400">Loading slots...</p>
-              ) : slots.length === 0 ? (
-                <p className="text-gray-400">No slots available.</p>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {slots.map((s) => {
-                    const isSelected = selectedSlotId === s.id;
-                    return (
-                      <button
-                        key={s.id}
-                        onClick={() => setSelectedSlotId(s.id)}
-                        className={`text-left p-3 rounded-md border ${isSelected
-                            ? "border-emerald-400 bg-emerald-900/30"
-                            : "border-gray-700 bg-gray-800"
-                          }`}
-                      >
-                        <div className="text-sm text-white font-medium">{s.slot}</div>
-                        <div className="text-xs text-gray-400">
-                          {new Date(s.date).toLocaleString()}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* Error / Success */}
-            {errorMsg && <p className="text-red-400 mt-4">{errorMsg}</p>}
-            {successMsg && <p className="text-green-400 mt-4">{successMsg}</p>}
-
-            {/* Buttons */}
-            <div className="flex items-center justify-end gap-3 mt-6">
-              <button
-                className="px-4 py-2 rounded-md bg-gray-700 text-white"
-                onClick={() => setModalOpen(false)}
-              >
-                Cancel
-              </button>
-
-              <button
-                disabled={bookingLoading}
-                onClick={submitBooking}
-                className="px-4 py-2 rounded-md bg-emerald-500 text-black font-semibold"
-              >
-                {bookingLoading ? "Booking..." : "Confirm & Book"}
-              </button>
-            </div>
+            <img
+              src={doctor.image || "https://via.placeholder.com/150"}
+              alt={doctor.name}
+              className="w-24 h-24 rounded-full object-cover mx-auto mb-3 border-2 border-emerald-400"
+            />
+            <h2 className="text-lg font-semibold">{doctor.name}</h2>
+            <p className="text-emerald-400">{doctor.specialization}</p>
+            <p className="text-gray-400 text-sm">{doctor.education}</p>
+            <p className="text-gray-500 text-sm">{doctor.location}</p>
+            <button
+              onClick={() => onBookClick(doctor)}
+              className="mt-4 bg-emerald-500 text-black px-4 py-2 rounded-lg"
+            >
+              {t("bookAppointment")}
+            </button>
           </motion.div>
-        </div>
+        ))}
+      </div>
+
+      {filteredDoctors.length === 0 && (
+        <p className="text-center text-gray-400 mt-10">No doctors found</p>
       )}
 
+      {/* Modal */}
+      {modalOpen && selectedDoctor && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+          <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-xl max-h-[90vh] overflow-y-auto scrollbar-hide">
+            <h3 className="text-lg font-bold mb-4">Book with {selectedDoctor.name}</h3>
+
+            {/* FORM FIELDS */}
+            <div className="grid grid-cols-2 gap-4">
+              <input
+                value={age}
+                onChange={(e) => setAge(e.target.value)}
+                placeholder="Age *"
+                className="bg-gray-800 p-2 rounded text-white border border-gray-700"
+              />
+              <select
+                value={gender}
+                onChange={(e) => setGender(e.target.value)}
+                className="bg-gray-800 p-2 rounded text-white border border-gray-700"
+              >
+                <option value="">Gender *</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+              </select>
+            </div>
+
+            <input
+              value={symptoms}
+              onChange={(e) => setSymptoms(e.target.value)}
+              placeholder="Symptoms *"
+              className="bg-gray-800 p-2 mt-3 rounded w-full text-white border border-gray-700"
+            />
+
+            <div className="grid grid-cols-2 gap-4 mt-4">
+              <input value={temperature} onChange={(e) => setTemperature(e.target.value)} placeholder="Temperature" className="bg-gray-800 p-2 rounded text-white border border-gray-700" />
+              <input value={pulse} onChange={(e) => setPulse(e.target.value)} placeholder="Pulse" className="bg-gray-800 p-2 rounded text-white border border-gray-700" />
+              <input value={bloodPressure} onChange={(e) => setBloodPressure(e.target.value)} placeholder="Blood Pressure" className="bg-gray-800 p-2 rounded text-white border border-gray-700" />
+              <input value={breathingRate} onChange={(e) => setBreathingRate(e.target.value)} placeholder="Breathing Rate" className="bg-gray-800 p-2 rounded text-white border border-gray-700" />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 mt-3 mb-6">
+              <input value={allergiesInput} onChange={(e) => setAllergiesInput(e.target.value)} placeholder="Allergies (comma separated)" className="bg-gray-800 p-2 rounded text-white border border-gray-700" />
+              <input value={chronicInput} onChange={(e) => setChronicInput(e.target.value)} placeholder="Chronic diseases" className="bg-gray-800 p-2 rounded text-white border border-gray-700" />
+            </div>
+
+            {/* --- NEW DATE & TIME SLOT SECTION --- */}
+            <div className="border-t border-gray-700 pt-4">
+              <h4 className="text-gray-300 font-semibold mb-2">Available Slots</h4>
+
+              {slotsLoading ? (
+                <p className="text-gray-400 text-center py-4">Loading slots...</p>
+              ) : uniqueDates.length === 0 ? (
+                <p className="text-gray-400 text-center py-4">No slots available for this doctor.</p>
+              ) : (
+                <>
+                  {/* Date Tabs */}
+                  <div className="flex gap-2 overflow-x-auto pb-2 mb-3 scrollbar-thin scrollbar-thumb-gray-600">
+                    {uniqueDates.map((date) => {
+                      const isSelected = selectedDate === date;
+                      return (
+                        <button
+                          key={date}
+                          onClick={() => {
+                            setSelectedDate(date);
+                            setSelectedSlotId(null); // Reset time when date changes
+                          }}
+                          className={`px-4 py-2 rounded-full whitespace-nowrap text-sm transition-colors ${
+                            isSelected
+                              ? "bg-emerald-500 text-black font-semibold"
+                              : "bg-gray-800 text-gray-300 border border-gray-600 hover:bg-gray-700"
+                          }`}
+                        >
+                          {date}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Time Slots for Selected Date */}
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 max-h-40 overflow-y-auto pr-1">
+                    {selectedDate && slotsByDate[selectedDate]?.map((s) => {
+                      const isSelected = selectedSlotId === s.id;
+                      return (
+                        <button
+                          key={s.id}
+                          onClick={() => setSelectedSlotId(s.id)}
+                          className={`px-2 py-2 rounded text-xs sm:text-sm border transition-all ${
+                            isSelected
+                              ? "border-emerald-400 bg-emerald-900/30 text-white"
+                              : "border-gray-700 bg-gray-800 text-gray-300 hover:border-gray-500"
+                          }`}
+                        >
+                          {s.slot}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
+            {/* --- END NEW SECTION --- */}
+
+            {errorMsg && <p className="text-red-400 mt-3 text-sm text-center">{errorMsg}</p>}
+            {successMsg && <p className="text-emerald-400 mt-3 text-sm text-center">{successMsg}</p>}
+
+            <div className="mt-6 flex justify-end gap-3 border-t border-gray-700 pt-4">
+              <button onClick={() => setModalOpen(false)} className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors">
+                Cancel
+              </button>
+              <button
+                onClick={submitBooking}
+                disabled={bookingLoading}
+                className={`px-4 py-2 rounded text-black font-semibold transition-colors ${
+                  bookingLoading ? "bg-emerald-700 cursor-not-allowed" : "bg-emerald-500 hover:bg-emerald-400"
+                }`}
+              >
+                {bookingLoading ? "Booking..." : "Book Appointment"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
