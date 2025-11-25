@@ -206,7 +206,7 @@ const Dashboard: React.FC = () => {
               animate={{ opacity: 1, y: 0 }}
               className="grid grid-cols-2 sm:grid-cols-4 gap-6 mb-12"
             >
-              {[ 
+              {[
                 { label: "Body Temperature", value: "36.2°C" },
                 { label: "Pulse", value: "85 bpm" },
                 { label: "Blood Pressure", value: "120/80 mmHg" },
@@ -248,6 +248,15 @@ const Dashboard: React.FC = () => {
                           <td className="p-3">{a.date}</td>
                           <td className="p-3">{a.time}</td>
                           <td className="p-3 text-emerald-400">{a.status}</td>
+                          <td className="p-3">
+                            {/* navigate to /video/:roomId where roomId = appointment id */}
+                            <button
+                              onClick={() => navigate(`/video/${a.id ?? a._id}`)}
+                              className="px-3 py-1 bg-emerald-500 text-black rounded-md font-medium hover:brightness-95"
+                            >
+                              Join Video
+                            </button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -301,6 +310,15 @@ const Dashboard: React.FC = () => {
                         <td className="p-3">{a.symptoms}</td>
                         <td className="p-3">{a.date}</td>
                         <td className="p-3">{a.time}</td>
+                        <td className="p-3">
+                          {/* navigate to /video/:roomId where roomId = appointment id */}
+                          <button
+                            onClick={() => navigate(`/video/${a.id ?? a._id}`)}
+                            className="px-3 py-1 bg-emerald-500 text-black rounded-md font-medium hover:brightness-95"
+                          >
+                            Join Video
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -332,11 +350,10 @@ const Dashboard: React.FC = () => {
                       <button
                         key={slot}
                         onClick={() => toggleSlot(slot)}
-                        className={`p-2 rounded-md border text-sm ${
-                          selectedSlots.includes(slot)
+                        className={`p-2 rounded-md border text-sm ${selectedSlots.includes(slot)
                             ? "border-emerald-400 bg-emerald-900/30"
                             : "border-gray-700 bg-gray-800"
-                        }`}
+                          }`}
                       >
                         {slot}
                       </button>

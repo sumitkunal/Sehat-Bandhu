@@ -5,6 +5,8 @@ import bcrypt from 'bcrypt';
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import cors from "cors";
+import WebSocket from "ws";
+import { WebSocketServer } from "ws";
 import { authMiddleware } from '../middleware/authMiddleware.js';
 dotenv.config();
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -15,13 +17,26 @@ if (!process.env.JWT_SECRET) {
 import multer from "multer";
 const upload = multer();
 
+// const app = express();
+import http from "http";
+
+import twilio from "twilio";
+
 const app = express();
+const httpServer = http.createServer(app);
+
 app.use(express.json());
 app.use(cors({
   origin: "http://localhost:5173",
   credentials: true
 }));
 
+
+const acSid = process.env.TWILIO_ACCOUNT_SID;
+const authToken = process.env.TWILIO_AUTH_TOKEN;
+const twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER; 
+const message_to_number = process.env.TWILIO_TO_PHONE_NUMBER;  //need to replace with user number when paid
+const twilioClient = twilio(acSid as string, authToken as string);
 
 app.get('/', (req, res) => {
   res.send("hello world");
@@ -462,16 +477,18 @@ app.post("/book", authMiddleware, async (req: any, res) => {
   try {
     const userId = req.user.userId;
 
-// Find Patient record linked to this user
-const patient = await prisma.patient.findUnique({
-  where: { userId }
-});
+    // Find Patient record linked to this user
+    const patient = await prisma.patient.findUnique({
+      where: { userId }
+    });
+    const user = await prisma.user.findUnique({
+      where: { id: userId }
+    });
+    if (!patient) {
+      return res.status(404).json({ error: "Patient not found" });
+    }
 
-if (!patient) {
-  return res.status(404).json({ error: "Patient not found" });
-}
-
-const patientId = patient.id;
+    const patientId = patient.id;
 
     const {
       doctorId,
@@ -507,7 +524,18 @@ const patientId = patient.id;
         status: "upcoming",
       },
     });
-
+    const mob = user?.phone;
+    try {
+    if (mob) {
+      await twilioClient.messages.create({
+        body: `\n Namste from Sehat Bandhu!\n Your appointment is booked on ${date} at ${time}.`,
+        from: twilioPhoneNumber as string,
+        to: message_to_number as string, // Replace with mob when paid 
+      });
+    }
+  } catch (error) {
+    console.error("Error sending SMS:", error);
+  }
     res.json({ message: "Appointment booked", appointment });
 
   } catch (err) {
@@ -517,6 +545,99 @@ const patientId = patient.id;
 });
 
 
-app.listen('3000', () => {
-  console.log("Server is running on port 3000");
-})
+
+
+// import type WebSocket from "ws";
+
+// roomId -> Set<WebSocket>
+type RoomPeers = {
+  host?: WebSocket;
+  guest?: WebSocket;
+};
+
+const rooms = new Map<string, { patient?: WebSocket; doctor?: WebSocket }>();
+
+function sendTo(ws: WebSocket | undefined, msg: any) {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(msg));
+  }
+}
+
+const wss = new WebSocketServer({ server: httpServer });
+
+wss.on("connection", (ws: WebSocket, req) => {
+  const url = req.url ?? "";
+  const params = new URLSearchParams(url.split("?")[1]);
+  const roomId = params.get("room");
+  const role = params.get("role"); // "patient" | "doctor"
+
+  if (!roomId || !role) {
+    ws.send(JSON.stringify({ type: "error", msg: "Room and role required" }));
+    ws.close();
+    return;
+  }
+
+  if (!rooms.has(roomId)) rooms.set(roomId, {});
+
+  const room = rooms.get(roomId)!;
+
+  if (role === "patient") {
+    if (room.patient) {
+      ws.send(JSON.stringify({ type: "error", msg: "Patient already in room" }));
+      ws.close();
+      return;
+    }
+    room.patient = ws;
+    console.log(`Patient joined room ${roomId}`);
+
+    if (room.doctor) {
+      sendTo(room.patient, { type: "doctor-joined" });
+    }
+  }
+
+  if (role === "doctor") {
+    if (!room.patient) {
+      ws.send(JSON.stringify({ type: "wait", msg: "Waiting for patient" }));
+    }
+    if (room.doctor) {
+      ws.send(JSON.stringify({ type: "error", msg: "Doctor already in room" }));
+      ws.close();
+      return;
+    }
+    room.doctor = ws;
+    console.log(`Doctor joined room ${roomId}`);
+
+    // Notify patient that doctor is present --> patient creates OFFER 💡
+    sendTo(room.patient, { type: "doctor-joined" });
+  }
+
+  // Relay WebRTC signals
+  ws.on("message", (data) => {
+    const msg = JSON.parse(data.toString());
+    const target = role === "patient" ? room.doctor : room.patient;
+    sendTo(target, msg);
+  });
+
+  ws.on("close", () => {
+    if (room.patient === ws) room.patient = undefined;
+    if (room.doctor === ws) room.doctor = undefined;
+
+    sendTo(role === "patient" ? room.doctor : room.patient, {
+      type: "left",
+    });
+
+    if (!room.patient && !room.doctor) {
+      rooms.delete(roomId);
+      console.log(`Room ${roomId} deleted`);
+    }
+  });
+});
+
+
+
+// app.listen('3000', () => {
+//   console.log("Server is running on port 3000");
+// })
+httpServer.listen(3000, () => {
+  console.log(`Backend + WebSocket running on port 3000`);
+});

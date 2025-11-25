@@ -12,10 +12,11 @@ import Signup from "../components/Signup";
 import DoctorSignup from "../components/DoctorSignup";
 import FindDoctor from "../components/findDoctor";
 import PatientDashboard from '../components/PatientDashboard';
+import VideoCallPage from "../components/videoCall";
 
 function AppContent() {
   const location = useLocation();
-  const hideNavbarRoutes = ["/login", "/signup", "/doctor-signup"];
+  const hideNavbarRoutes = [ "/signup", "/doctor-signup", "/video/:roomId"];
 
   const shouldShowNavbar = !hideNavbarRoutes.includes(location.pathname);
 
@@ -37,6 +38,7 @@ function AppContent() {
         <Route path="/signup" element={<Signup />} />
         <Route path="/doctor-signup" element={<DoctorSignup />} />
         <Route path="/appointments" element={<PatientDashboard />} />
+        <Route path="/video/:roomId" element={<VideoCallPage />} />
         <Route path="*" element={null} />
       </Routes>
 
