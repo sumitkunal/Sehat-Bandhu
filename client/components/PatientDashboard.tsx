@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { FileText, Calendar, Clock } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { FileText, Calendar } from "lucide-react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 const backendUrl = (import.meta as any).env?.VITE_BACKEND_URL || "http://localhost:3000";
 
@@ -13,8 +13,10 @@ const Dashboard: React.FC = () => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  // Doctor states
+  // Doctor + Patient appointments
   const [appointments, setAppointments] = useState<any[]>([]);
+
+  // Doctor Availability
   const [availabilityDate, setAvailabilityDate] = useState("");
   const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
@@ -41,23 +43,12 @@ const Dashboard: React.FC = () => {
     { name: "Calcium", date: "02/11/2023" },
   ];
 
-  const patientSampleAppointments = [
-    {
-      doctor: "Dr. Arjun Mehta",
-      specialization: "Orthopedic Surgeon",
-      date: "2025-11-08",
-      time: "03:00 PM",
-      status: "Scheduled",
-    },
-  ];
-
   // Load user & role
   useEffect(() => {
     const token = localStorage.getItem("token");
     const storedRole = localStorage.getItem("role");
 
-    if (!token) return navigate("/login");
-    if (!storedRole) return navigate("/login");
+    if (!token || !storedRole) return navigate("/login");
 
     setRole(storedRole);
 
@@ -68,23 +59,35 @@ const Dashboard: React.FC = () => {
         });
         setUser(res.data);
 
+        // ------------------------------------------
+        // FIXED: FETCH APPOINTMENTS FOR PATIENT
+        // ------------------------------------------
+        if (storedRole === "patient") {
+          const appRes = await axios.get(`${backendUrl}/appointments/patient`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+
+          const data = appRes.data;
+
+          if (Array.isArray(data)) setAppointments(data);
+          else if (Array.isArray(data?.appointments))
+            setAppointments(data.appointments);
+          else setAppointments([]);
+        }
+
+        // FETCH APPOINTMENTS FOR DOCTOR
         if (storedRole === "doctor") {
           const appRes = await axios.get(`${backendUrl}/appointments/me`, {
             headers: { Authorization: `Bearer ${token}` },
           });
 
-          // FIX: ensure array
           const data = appRes.data;
 
-          if (Array.isArray(data)) {
-            setAppointments(data);
-          } else if (Array.isArray(data?.appointments)) {
+          if (Array.isArray(data)) setAppointments(data);
+          else if (Array.isArray(data?.appointments))
             setAppointments(data.appointments);
-          } else {
-            setAppointments([]); // fallback
-          }
+          else setAppointments([]);
         }
-
       } catch (err) {
         console.error(err);
         navigate("/login");
@@ -116,7 +119,6 @@ const Dashboard: React.FC = () => {
         { date: availabilityDate, slots: selectedSlots },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-
 
       setMessage("Availability saved!");
       setAvailabilityDate("");
@@ -195,9 +197,8 @@ const Dashboard: React.FC = () => {
           />
         </motion.div>
 
-        {/* Render Dashboard Based on Role */}
+        {/* ========================== PATIENT DASHBOARD ============================= */}
         {role === "patient" ? (
-          /* ===================== PATIENT DASHBOARD ======================= */
           <>
             {/* Vitals */}
             <motion.div
@@ -205,7 +206,7 @@ const Dashboard: React.FC = () => {
               animate={{ opacity: 1, y: 0 }}
               className="grid grid-cols-2 sm:grid-cols-4 gap-6 mb-12"
             >
-              {[
+              {[ 
                 { label: "Body Temperature", value: "36.2°C" },
                 { label: "Pulse", value: "85 bpm" },
                 { label: "Blood Pressure", value: "120/80 mmHg" },
@@ -223,27 +224,27 @@ const Dashboard: React.FC = () => {
 
             {/* Reports + Appointments */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+              {/* Appointments */}
               <motion.div className="lg:col-span-2 bg-gray-900/70 p-6 border border-gray-700 rounded-2xl shadow-xl">
                 <h3 className="text-lg text-emerald-400 mb-4">Appointments</h3>
 
-                {patientSampleAppointments.length === 0 ? (
+                {appointments.length === 0 ? (
                   <p className="text-gray-400">No appointments yet.</p>
                 ) : (
                   <table className="w-full text-left text-gray-300">
                     <thead className="text-gray-400 bg-gray-800/70 text-sm">
                       <tr>
                         <th className="p-3">Doctor</th>
-                        <th className="p-3">Specialization</th>
                         <th className="p-3">Date</th>
                         <th className="p-3">Time</th>
                         <th className="p-3">Status</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {patientSampleAppointments.map((a, i) => (
+                      {appointments.map((a, i) => (
                         <tr key={i} className="border-t border-gray-700">
-                          <td className="p-3">{a.doctor}</td>
-                          <td className="p-3">{a.specialization}</td>
+                          <td className="p-3">{a.doctorName}</td>
                           <td className="p-3">{a.date}</td>
                           <td className="p-3">{a.time}</td>
                           <td className="p-3 text-emerald-400">{a.status}</td>
@@ -331,10 +332,11 @@ const Dashboard: React.FC = () => {
                       <button
                         key={slot}
                         onClick={() => toggleSlot(slot)}
-                        className={`p-2 rounded-md border text-sm ${selectedSlots.includes(slot)
-                          ? "border-emerald-400 bg-emerald-900/30"
-                          : "border-gray-700 bg-gray-800"
-                          }`}
+                        className={`p-2 rounded-md border text-sm ${
+                          selectedSlots.includes(slot)
+                            ? "border-emerald-400 bg-emerald-900/30"
+                            : "border-gray-700 bg-gray-800"
+                        }`}
                       >
                         {slot}
                       </button>
