@@ -28,7 +28,7 @@ const httpServer = http.createServer(app);
 
 app.use(express.json());
 app.use(cors({
-  origin: "http://localhost:5173",
+  origin: "*",
   credentials: true
 }));
 
