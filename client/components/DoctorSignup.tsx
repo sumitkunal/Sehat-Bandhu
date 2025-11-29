@@ -57,7 +57,7 @@ const DoctorSignup: React.FC = () => {
     setLoading(true);
 
     try {
-      const baseUrl = "http://localhost:3000";
+      const baseUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
 
       const fd = new FormData();
       fd.append("name", form.name);
@@ -145,7 +145,7 @@ const DoctorSignup: React.FC = () => {
         </div>
 
         <form className="mt-6 space-y-6" onSubmit={handleSubmit} noValidate>
-          {[ 
+          {[
             ["name", "Full Name"],
             ["email", "Email"],
             ["phone", "Phone (optional)"],

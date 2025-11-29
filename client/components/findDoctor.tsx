@@ -45,7 +45,7 @@ const FindDoctor: React.FC = () => {
 
   const [slots, setSlots] = useState<Slot[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
-  
+
   // NEW: State to track the currently selected date filter
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
@@ -113,7 +113,7 @@ const FindDoctor: React.FC = () => {
   // ----------------------------------------------------
   // 2. DATA GROUPING LOGIC (NEW)
   // ----------------------------------------------------
-  
+
   // Group slots by date: { "2024-11-25": [Slot, Slot], "2024-11-26": [...] }
   const slotsByDate = useMemo(() => {
     const groups: Record<string, Slot[]> = {};
@@ -205,7 +205,7 @@ const FindDoctor: React.FC = () => {
       return;
     }
 
-    const token = localStorage.getItem("token");
+    // const token = localStorage.getItem("token");
     setBookingLoading(true);
     try {
       const parsedAge = Number(age);
@@ -229,16 +229,15 @@ const FindDoctor: React.FC = () => {
         chronicDiseases: chronicInput ? chronicInput.split(",").map(s => s.trim()).filter(Boolean) : []
       };
 
-      await axios.post(`${backendUrl}/book`, body, {
-        headers: { Authorization: token ? `Bearer ${token}` : "" },
-      });
+      // Save booking details to localStorage
+      localStorage.setItem("pendingBooking", JSON.stringify(body));
 
-      setSuccessMsg("Appointment booked successfully!");
-      setErrorMsg(null);
-      setTimeout(() => setModalOpen(false), 1200);
+      // Redirect to payment page
+      navigate("/payment");
+
     } catch (err: any) {
-      console.error("Booking error:", err?.response ?? err);
-      setErrorMsg(err?.response?.data?.error ?? "Booking failed.");
+      console.error("Booking preparation error:", err);
+      setErrorMsg("Failed to proceed to payment.");
     } finally {
       setBookingLoading(false);
     }
@@ -399,11 +398,10 @@ const FindDoctor: React.FC = () => {
                             setSelectedDate(date);
                             setSelectedSlotId(null); // Reset time when date changes
                           }}
-                          className={`px-4 py-2 rounded-full whitespace-nowrap text-sm transition-colors ${
-                            isSelected
-                              ? "bg-emerald-500 text-black font-semibold"
-                              : "bg-gray-800 text-gray-300 border border-gray-600 hover:bg-gray-700"
-                          }`}
+                          className={`px-4 py-2 rounded-full whitespace-nowrap text-sm transition-colors ${isSelected
+                            ? "bg-emerald-500 text-black font-semibold"
+                            : "bg-gray-800 text-gray-300 border border-gray-600 hover:bg-gray-700"
+                            }`}
                         >
                           {date}
                         </button>
@@ -419,11 +417,10 @@ const FindDoctor: React.FC = () => {
                         <button
                           key={s.id}
                           onClick={() => setSelectedSlotId(s.id)}
-                          className={`px-2 py-2 rounded text-xs sm:text-sm border transition-all ${
-                            isSelected
-                              ? "border-emerald-400 bg-emerald-900/30 text-white"
-                              : "border-gray-700 bg-gray-800 text-gray-300 hover:border-gray-500"
-                          }`}
+                          className={`px-2 py-2 rounded text-xs sm:text-sm border transition-all ${isSelected
+                            ? "border-emerald-400 bg-emerald-900/30 text-white"
+                            : "border-gray-700 bg-gray-800 text-gray-300 hover:border-gray-500"
+                            }`}
                         >
                           {s.slot}
                         </button>
@@ -445,9 +442,8 @@ const FindDoctor: React.FC = () => {
               <button
                 onClick={submitBooking}
                 disabled={bookingLoading}
-                className={`px-4 py-2 rounded text-black font-semibold transition-colors ${
-                  bookingLoading ? "bg-emerald-700 cursor-not-allowed" : "bg-emerald-500 hover:bg-emerald-400"
-                }`}
+                className={`px-4 py-2 rounded text-black font-semibold transition-colors ${bookingLoading ? "bg-emerald-700 cursor-not-allowed" : "bg-emerald-500 hover:bg-emerald-400"
+                  }`}
               >
                 {bookingLoading ? "Booking..." : "Book Appointment"}
               </button>

@@ -3,7 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Mic, MicOff, Video, VideoOff, PhoneOff, User } from "lucide-react";
 
 // Fallback to localhost if environment variable is not set or supported in this target
-const SIGNALING_WS = "ws://localhost:3000";
+const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
+const SIGNALING_WS = backendUrl.replace(/^http/, "ws");
 
 const ICE_SERVERS: RTCIceServer[] = [
   { urls: "stun:stun.l.google.com:19302" },
@@ -81,7 +82,7 @@ const VideoCallPage: React.FC = () => {
         if (localRef.current) {
           localRef.current.srcObject = localStream;
           localRef.current.muted = true;
-          await localRef.current.play().catch(() => {});
+          await localRef.current.play().catch(() => { });
         }
 
         const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
@@ -92,7 +93,7 @@ const VideoCallPage: React.FC = () => {
         pc.ontrack = (event) => {
           if (!remoteRef.current) return;
           remoteRef.current.srcObject = event.streams[0];
-          remoteRef.current.play().catch(() => {});
+          remoteRef.current.play().catch(() => { });
         };
 
         pc.onicecandidate = (ev) => {
@@ -191,7 +192,7 @@ const VideoCallPage: React.FC = () => {
         try {
           wsRef.current.send(JSON.stringify({ type: "leave" }));
           wsRef.current.close();
-        } catch {}
+        } catch { }
       }
 
       if (pcRef.current) {
@@ -234,9 +235,8 @@ const VideoCallPage: React.FC = () => {
           ref={remoteRef}
           autoPlay
           playsInline
-          className={`w-full h-full object-cover transition-opacity duration-500 ${
-            connected ? "opacity-100" : "opacity-0"
-          }`}
+          className={`w-full h-full object-cover transition-opacity duration-500 ${connected ? "opacity-100" : "opacity-0"
+            }`}
         />
         {/* Placeholder if not connected */}
         {!connected && (
@@ -259,9 +259,8 @@ const VideoCallPage: React.FC = () => {
           autoPlay
           playsInline
           muted // Always mute local to prevent echo
-          className={`w-full h-full object-cover transform scale-x-[-1] ${
-            cameraOff ? "hidden" : "block"
-          }`}
+          className={`w-full h-full object-cover transform scale-x-[-1] ${cameraOff ? "hidden" : "block"
+            }`}
         />
         {/* Camera Off Placeholder for Self */}
         {cameraOff && (
@@ -279,11 +278,10 @@ const VideoCallPage: React.FC = () => {
         {/* Toggle Mute */}
         <button
           onClick={toggleMute}
-          className={`p-3 md:p-4 rounded-full transition-all duration-200 shadow-lg ${
-            muted
+          className={`p-3 md:p-4 rounded-full transition-all duration-200 shadow-lg ${muted
               ? "bg-red-500/90 hover:bg-red-600 text-white"
               : "bg-gray-700/80 hover:bg-gray-600 text-white"
-          }`}
+            }`}
           title={muted ? "Unmute" : "Mute"}
         >
           {muted ? <MicOff size={24} /> : <Mic size={24} />}
@@ -292,11 +290,10 @@ const VideoCallPage: React.FC = () => {
         {/* Toggle Camera */}
         <button
           onClick={toggleCamera}
-          className={`p-3 md:p-4 rounded-full transition-all duration-200 shadow-lg ${
-            cameraOff
+          className={`p-3 md:p-4 rounded-full transition-all duration-200 shadow-lg ${cameraOff
               ? "bg-red-500/90 hover:bg-red-600 text-white"
               : "bg-gray-700/80 hover:bg-gray-600 text-white"
-          }`}
+            }`}
           title={cameraOff ? "Turn Camera On" : "Turn Camera Off"}
         >
           {cameraOff ? <VideoOff size={24} /> : <Video size={24} />}
@@ -316,9 +313,8 @@ const VideoCallPage: React.FC = () => {
       <div className="absolute top-4 left-4 z-10">
         <div className="flex items-center gap-2 bg-black/40 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-white/5">
           <div
-            className={`w-2 h-2 rounded-full ${
-              connected ? "bg-green-500 animate-pulse" : "bg-yellow-500"
-            }`}
+            className={`w-2 h-2 rounded-full ${connected ? "bg-green-500 animate-pulse" : "bg-yellow-500"
+              }`}
           />
           <span className="text-xs md:text-sm font-medium text-white/90">
             {connected ? "Live" : "Connecting..."}

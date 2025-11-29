@@ -27,7 +27,8 @@ const Login: React.FC = () => {
     setLoading(true);
 
     try {
-      const res = await fetch("http://localhost:3000/auth/signin", {
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
+      const res = await fetch(`${backendUrl}/auth/signin`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),

@@ -6,7 +6,7 @@
   "main": "src/index.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "tsc -b",
+    "build": "npx prisma generate && tsc -b",
     "start": "node dist/src/index.js",
     "dev": "npm run build && npm run start"
   },
@@ -25,6 +25,7 @@
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.2",
     "prisma": "^6.14.0",
+    "stripe": "^20.0.0",
     "twilio": "^5.10.6",
     "ws": "^8.18.3",
     "zod": "^4.1.12"

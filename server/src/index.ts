@@ -21,6 +21,7 @@ const upload = multer();
 import http from "http";
 
 import twilio from "twilio";
+import Stripe from "stripe";
 
 const app = express();
 const httpServer = http.createServer(app);
@@ -34,9 +35,32 @@ app.use(cors({
 
 const acSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
-const twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER; 
+const twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER;
 const message_to_number = process.env.TWILIO_TO_PHONE_NUMBER;  //need to replace with user number when paid
 const twilioClient = twilio(acSid as string, authToken as string);
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string || "sk_test_dummy");
+
+app.post("/create-payment-intent", async (req, res) => {
+  try {
+    const { amount, currency } = req.body;
+
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount,
+      currency,
+      automatic_payment_methods: {
+        enabled: true,
+      },
+    });
+
+    res.send({
+      clientSecret: paymentIntent.client_secret,
+    });
+  } catch (error) {
+    console.error("Stripe error:", error);
+    res.status(500).send({ error: "Failed to create payment intent" });
+  }
+});
 
 app.get('/', (req, res) => {
   res.send("hello world");
@@ -430,8 +454,6 @@ app.post("/set-availability", authMiddleware, async (req: any, res) => {
 app.get("/doctor/:doctorId/slots", async (req, res) => {
   try {
     const { doctorId } = req.params;
-
-    // Find all availability records for this doctor
     const availabilities = await prisma.availability.findMany({
       where: { doctorId },
     });
@@ -439,22 +461,16 @@ app.get("/doctor/:doctorId/slots", async (req, res) => {
     if (!availabilities) {
       return res.json({ slots: [] });
     }
-
-    // Define the interface for our output object
     interface FormattedSlot {
       id: string;
       date: string;
       slot: string;
     }
-
-    // Flatten the data structure for the frontend
     let allSlots: FormattedSlot[] = [];
 
     availabilities.forEach((record) => {
-      // Prisma Json types require casting to be treated as arrays in TS
       const slotsList = record.slots as unknown as string[];
 
-      // Check if slots exist and is an array
       if (slotsList && Array.isArray(slotsList)) {
         slotsList.forEach((time: string) => {
           allSlots.push({
@@ -476,8 +492,6 @@ app.get("/doctor/:doctorId/slots", async (req, res) => {
 app.post("/book", authMiddleware, async (req: any, res) => {
   try {
     const userId = req.user.userId;
-
-    // Find Patient record linked to this user
     const patient = await prisma.patient.findUnique({
       where: { userId }
     });
@@ -526,16 +540,16 @@ app.post("/book", authMiddleware, async (req: any, res) => {
     });
     const mob = user?.phone;
     try {
-    if (mob) {
-      await twilioClient.messages.create({
-        body: `\n Namste from Sehat Bandhu!\n Your appointment is booked on ${date} at ${time}.`,
-        from: twilioPhoneNumber as string,
-        to: message_to_number as string, // Replace with mob when paid 
-      });
+      if (mob) {
+        await twilioClient.messages.create({
+          body: `\n Namste from Sehat Bandhu!\n Your appointment is booked on ${date} at ${time}.`,
+          from: twilioPhoneNumber as string,
+          to: message_to_number as string, // Replace with mob when paid 
+        });
+      }
+    } catch (error) {
+      console.error("Error sending SMS:", error);
     }
-  } catch (error) {
-    console.error("Error sending SMS:", error);
-  }
     res.json({ message: "Appointment booked", appointment });
 
   } catch (err) {
@@ -544,8 +558,7 @@ app.post("/book", authMiddleware, async (req: any, res) => {
   }
 });
 
-
-
+// ================= WEBSOCKET SERVER FOR WEBRTC SIGNALING ================= //
 
 // import type WebSocket from "ws";
 
