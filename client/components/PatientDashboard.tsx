@@ -48,7 +48,10 @@ const Dashboard: React.FC = () => {
     const token = localStorage.getItem("token");
     const storedRole = localStorage.getItem("role");
 
-    if (!token || !storedRole) return navigate("/login");
+    if (!token || !storedRole) {
+      navigate("/login");
+      return;
+    }
 
     setRole(storedRole);
 
@@ -351,8 +354,8 @@ const Dashboard: React.FC = () => {
                         key={slot}
                         onClick={() => toggleSlot(slot)}
                         className={`p-2 rounded-md border text-sm ${selectedSlots.includes(slot)
-                            ? "border-emerald-400 bg-emerald-900/30"
-                            : "border-gray-700 bg-gray-800"
+                          ? "border-emerald-400 bg-emerald-900/30"
+                          : "border-gray-700 bg-gray-800"
                           }`}
                       >
                         {slot}

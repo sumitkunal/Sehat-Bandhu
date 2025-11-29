@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Calendar, MessageSquare, Pill, Users, Video, Map, Bell, Shield } from 'lucide-react';
+import { Calendar, MessageSquare, Pill, Video } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 const ServiceCards: React.FC = () => {

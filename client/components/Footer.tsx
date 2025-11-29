@@ -36,7 +36,7 @@ const Footer: React.FC = () => {
           <div>
             <h3 className="text-lg font-semibold mb-4">{t("quickLinks")}</h3>
             <ul className="space-y-2">
-              {t("menu", { returnObjects: true }).map((text: string, idx: number) => (
+              {(t("menu", { returnObjects: true }) as any[]).map((text: string, idx: number) => (
                 <li key={idx}>
                   <Link to="/" className="text-gray-400 hover:text-white transition-colors">
                     {text}
@@ -50,7 +50,7 @@ const Footer: React.FC = () => {
           <div>
             <h3 className="text-lg font-semibold mb-4">{t("services")}</h3>
             <ul className="space-y-2">
-              {t("serviceList", { returnObjects: true }).map((text: string, idx: number) => (
+              {(t("serviceList", { returnObjects: true }) as any[]).map((text: string, idx: number) => (
                 <li key={idx}>
                   <Link to="/" className="text-gray-400 hover:text-white transition-colors">
                     {text}

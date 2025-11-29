@@ -6,8 +6,11 @@ import { Calendar, ArrowRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { useTranslation } from 'react-i18next';
 
+// @ts-ignore
 import 'swiper/css';
+// @ts-ignore
 import 'swiper/css/pagination';
+// @ts-ignore
 import 'swiper/css/navigation';
 
 interface NewsItem {
@@ -23,7 +26,7 @@ interface NewsItem {
 const NewsSlider: React.FC = () => {
   const [loading, setLoading] = useState(true);
   setTimeout(() => setLoading(false), 2000);
-  const {t} = useTranslation("newsSlider");
+  const { t } = useTranslation("newsSlider");
   const placeholderNews: NewsItem[] = [
     {
       id: '1',
@@ -103,12 +106,12 @@ const NewsSlider: React.FC = () => {
           >
             {t("line1")} {' '}
             <span className="bg-gradient-to-r from-emerald-600 via-green-500 to-teal-400 text-transparent bg-clip-text">
-              {t("line2")} 
+              {t("line2")}
             </span>{' '}
-            {t("line3")} 
+            {t("line3")}
           </motion.h2>
           <p className="mt-4 text-lg text-gray-300 max-w-2xl mx-auto">
-            {t("line4")} 
+            {t("line4")}
           </p>
         </div>
 
