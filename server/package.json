@@ -6,7 +6,7 @@
   "main": "src/index.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "npx prisma generate --schema=./db/prisma/schema.prisma && tsc -b",
+    "build": "npx prisma generate --schema=./db/prisma/schema.prisma && tsc",
     "start": "node dist/src/index.js",
     "dev": "npm run build && npm run start"
   },
@@ -27,6 +27,7 @@
     "prisma": "^6.14.0",
     "stripe": "^20.0.0",
     "twilio": "^5.10.6",
+    "typescript": "^5.9.3",
     "ws": "^8.18.3",
     "zod": "^4.1.12"
   },
@@ -35,7 +36,6 @@
     "@types/multer": "^2.0.0",
     "@types/node": "^24.9.1",
     "@types/ws": "^8.18.1",
-    "tsx": "^4.20.6",
-    "typescript": "^5.9.3"
+    "tsx": "^4.20.6"
   }
 }
